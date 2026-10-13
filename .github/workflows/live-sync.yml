@@ -1,0 +1,31 @@
+name: Live NBA sync
+
+# Vercel Hobby cron only runs once a day, so GitHub Actions pings the live sync endpoint
+# every 5 minutes. 21:00-07:59 UTC covers roughly 5pm-2am Eastern in both DST and standard
+# time; the endpoint is a fast no-op when no game is live or about to start.
+on:
+  schedule:
+    - cron: "*/5 21-23,0-7 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: live-sync
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Call /api/cron/live
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::notice::APP_URL repository variable is not set yet; skipping live sync."
+            exit 0
+          fi
+          curl -fsS -m 60 -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/api/cron/live"

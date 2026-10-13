@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { sessions } from "@/db/schema";
+import { loginAttempts, sessions } from "@/db/schema";
 import type { Db } from "@/db/types";
 import {
   LOCKOUT_MS,
@@ -11,8 +11,10 @@ import {
   createPasswordReset,
   createSession,
   createUser,
+  AuthError,
   deleteSession,
   redeemPasswordReset,
+  setPasswordByUsername,
   validateSession,
 } from "@/lib/auth/service";
 import { hashToken } from "@/lib/auth/tokens";
@@ -25,8 +27,8 @@ let adminId: string;
 
 beforeAll(async () => {
   ({ db, close } = await createTestDb());
-  adminId = (await createUser(db, { username: "boss", displayName: "Boss", password: "password123", isSiteAdmin: true })).id;
-  userId = (await createUser(db, { username: "Bob", displayName: "Bob", password: "password123" })).id;
+  adminId = (await createUser(db, { username: "boss", password: "password123", isSiteAdmin: true })).id;
+  userId = (await createUser(db, { username: "Bob", password: "password123" })).id;
 });
 afterAll(() => close());
 
@@ -106,5 +108,42 @@ describe("password reset", () => {
     await expect(redeemPasswordReset(db, { token: expired.token, password: "another-pass-3" })).rejects.toMatchObject({
       code: "invalid_token",
     });
+  });
+});
+
+describe("setPasswordByUsername (owner recovery)", () => {
+  it("replaces the password, kills sessions, clears lockout, keeps admin flag", async () => {
+    const admin = await createUser(db, { username: "Recover", password: "old-password1", isSiteAdmin: true });
+    await createSession(db, admin.id);
+    await createSession(db, admin.id);
+    const t0 = new Date();
+    for (let i = 0; i < MAX_FAILED_LOGINS; i++) await authenticate(db, "recover", "bad-password", t0);
+    expect(await authenticate(db, "recover", "old-password1", t0)).toMatchObject({ reason: "locked" });
+
+    const updated = await setPasswordByUsername(db, "RECOVER", "new-password1");
+    expect(updated.id).toBe(admin.id);
+    expect(updated.isSiteAdmin).toBe(true);
+
+    expect(await db.select().from(sessions).where(eq(sessions.userId, admin.id))).toHaveLength(0);
+    expect(await db.select().from(loginAttempts).where(eq(loginAttempts.usernameKey, "recover"))).toHaveLength(0);
+    expect((await authenticate(db, "recover", "old-password1", t0)).ok).toBe(false);
+    const ok = await authenticate(db, "recover", "new-password1", t0);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.user.isSiteAdmin).toBe(true);
+  });
+
+  it("does not promote a non-admin", async () => {
+    const u = await createUser(db, { username: "plain", password: "old-password1" });
+    const updated = await setPasswordByUsername(db, "plain", "new-password1");
+    expect(updated.id).toBe(u.id);
+    expect(updated.isSiteAdmin).toBe(false);
+  });
+
+  it("throws for an unknown username and creates nothing", async () => {
+    await expect(setPasswordByUsername(db, "ghost", "new-password1")).rejects.toMatchObject({
+      code: "user_not_found",
+    });
+    await expect(setPasswordByUsername(db, "ghost", "new-password1")).rejects.toBeInstanceOf(AuthError);
+    expect((await authenticate(db, "ghost", "new-password1")).ok).toBe(false);
   });
 });

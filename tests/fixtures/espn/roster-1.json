@@ -1,0 +1,854 @@
+{
+ "timestamp": "2026-10-13T20:05:12Z",
+ "status": "success",
+ "season": {
+  "year": 2027,
+  "displayName": "2026-27",
+  "type": 1,
+  "name": "Preseason"
+ },
+ "athletes": [
+  {
+   "id": "4278039",
+   "firstName": "Nickeil",
+   "lastName": "Alexander-Walker",
+   "fullName": "Nickeil Alexander-Walker",
+   "displayName": "Nickeil Alexander-Walker",
+   "shortName": "N. Alexander-Walker",
+   "weight": 205,
+   "displayWeight": "205 lbs",
+   "height": 77,
+   "displayHeight": "6' 5\"",
+   "age": 28,
+   "dateOfBirth": "1998-09-02T07:00Z",
+   "debutYear": 2019,
+   "slug": "nickeil-alexander-walker",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4278039.png",
+    "alt": "Nickeil Alexander-Walker"
+   },
+   "jersey": "7",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 8
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4712902",
+   "firstName": "Cameron",
+   "lastName": "Corhen",
+   "fullName": "Cameron Corhen",
+   "displayName": "Cameron Corhen",
+   "shortName": "C. Corhen",
+   "weight": 235,
+   "displayWeight": "235 lbs",
+   "height": 82,
+   "displayHeight": "6' 10\"",
+   "age": 22,
+   "dateOfBirth": "2004-05-01T07:00Z",
+   "slug": "cameron-corhen",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4869342",
+   "firstName": "Dyson",
+   "lastName": "Daniels",
+   "fullName": "Dyson Daniels",
+   "displayName": "Dyson Daniels",
+   "shortName": "D. Daniels",
+   "weight": 199,
+   "displayWeight": "199 lbs",
+   "height": 79,
+   "displayHeight": "6' 7\"",
+   "age": 23,
+   "dateOfBirth": "2003-03-17T08:00Z",
+   "slug": "dyson-daniels",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4869342.png",
+    "alt": "Dyson Daniels"
+   },
+   "jersey": "5",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:27Z"
+    }
+   ],
+   "experience": {
+    "years": 5
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4431941",
+   "firstName": "RayJ",
+   "lastName": "Dennis",
+   "fullName": "RayJ Dennis",
+   "displayName": "RayJ Dennis",
+   "shortName": "R. Dennis",
+   "weight": 180,
+   "displayWeight": "180 lbs",
+   "height": 74,
+   "displayHeight": "6' 2\"",
+   "age": 25,
+   "dateOfBirth": "2001-03-30T08:00Z",
+   "slug": "rayj-dennis",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4431941.png",
+    "alt": "RayJ Dennis"
+   },
+   "jersey": "10",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 3
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4397020",
+   "firstName": "Luguentz",
+   "lastName": "Dort",
+   "fullName": "Luguentz Dort",
+   "displayName": "Luguentz Dort",
+   "shortName": "L. Dort",
+   "weight": 220,
+   "displayWeight": "220 lbs",
+   "height": 76,
+   "displayHeight": "6' 4\"",
+   "age": 27,
+   "dateOfBirth": "1999-04-19T07:00Z",
+   "debutYear": 2019,
+   "slug": "luguentz-dort",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397020.png",
+    "alt": "Luguentz Dort"
+   },
+   "jersey": "0",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:30Z"
+    }
+   ],
+   "experience": {
+    "years": 8
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5106262",
+   "firstName": "Zuby",
+   "lastName": "Ejiofor",
+   "fullName": "Zuby Ejiofor",
+   "displayName": "Zuby Ejiofor",
+   "shortName": "Z. Ejiofor",
+   "weight": 245,
+   "displayWeight": "245 lbs",
+   "height": 80,
+   "displayHeight": "6' 8\"",
+   "age": 22,
+   "dateOfBirth": "2004-04-20T07:00Z",
+   "slug": "zuby-ejiofor",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/5106262.png",
+    "alt": "Zuby Ejiofor"
+   },
+   "jersey": "20",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "2578185",
+   "firstName": "Dorian",
+   "lastName": "Finney-Smith",
+   "fullName": "Dorian Finney-Smith",
+   "displayName": "Dorian Finney-Smith",
+   "shortName": "D. Finney-Smith",
+   "weight": 220,
+   "displayWeight": "220 lbs",
+   "height": 79,
+   "displayHeight": "6' 7\"",
+   "age": 33,
+   "dateOfBirth": "1993-05-04T07:00Z",
+   "debutYear": 2016,
+   "slug": "dorian-finney-smith",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/2578185.png",
+    "alt": "Dorian Finney-Smith"
+   },
+   "jersey": "8",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 11
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5149077",
+   "firstName": "Kingston",
+   "lastName": "Flemings",
+   "fullName": "Kingston Flemings",
+   "displayName": "Kingston Flemings",
+   "shortName": "K. Flemings",
+   "weight": 183,
+   "displayWeight": "183 lbs",
+   "height": 75,
+   "displayHeight": "6' 3\"",
+   "age": 19,
+   "dateOfBirth": "2007-01-03T08:00Z",
+   "slug": "kingston-flemings",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/5149077.png",
+    "alt": "Kingston Flemings"
+   },
+   "jersey": "4",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4585618",
+   "firstName": "Keshon",
+   "lastName": "Gilbert",
+   "fullName": "Keshon Gilbert",
+   "displayName": "Keshon Gilbert",
+   "shortName": "K. Gilbert",
+   "weight": 200,
+   "displayWeight": "200 lbs",
+   "height": 76,
+   "displayHeight": "6' 4\"",
+   "age": 23,
+   "dateOfBirth": "2003-06-30T07:00Z",
+   "slug": "keshon-gilbert",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4585618.png",
+    "alt": "Keshon Gilbert"
+   },
+   "jersey": "51",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:36Z"
+    }
+   ],
+   "experience": {
+    "years": 2
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4712863",
+   "firstName": "Mouhamed",
+   "lastName": "Gueye",
+   "fullName": "Mouhamed Gueye",
+   "displayName": "Mouhamed Gueye",
+   "shortName": "M. Gueye",
+   "weight": 210,
+   "displayWeight": "210 lbs",
+   "height": 83,
+   "displayHeight": "6' 11\"",
+   "age": 23,
+   "dateOfBirth": "2002-11-09T08:00Z",
+   "slug": "mouhamed-gueye",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4712863.png",
+    "alt": "Mouhamed Gueye"
+   },
+   "jersey": "18",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-07-19T00:14Z"
+    }
+   ],
+   "experience": {
+    "years": 4
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4701230",
+   "firstName": "Jalen",
+   "lastName": "Johnson",
+   "fullName": "Jalen Johnson",
+   "displayName": "Jalen Johnson",
+   "shortName": "J. Johnson",
+   "weight": 219,
+   "displayWeight": "219 lbs",
+   "height": 80,
+   "displayHeight": "6' 8\"",
+   "age": 24,
+   "dateOfBirth": "2001-12-18T08:00Z",
+   "slug": "jalen-johnson",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4701230.png",
+    "alt": "Jalen Johnson"
+   },
+   "jersey": "1",
+   "hand": {
+    "type": "LEFT",
+    "abbreviation": "L",
+    "displayValue": "Left"
+   },
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:29Z"
+    }
+   ],
+   "experience": {
+    "years": 6
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4683857",
+   "firstName": "Kobe",
+   "lastName": "Johnson",
+   "fullName": "Kobe Johnson",
+   "displayName": "Kobe Johnson",
+   "shortName": "K. Johnson",
+   "weight": 200,
+   "displayWeight": "200 lbs",
+   "height": 78,
+   "displayHeight": "6' 6\"",
+   "age": 23,
+   "dateOfBirth": "2003-01-15T08:00Z",
+   "slug": "kobe-johnson",
+   "jersey": "12",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4280151",
+   "firstName": "Corey",
+   "lastName": "Kispert",
+   "fullName": "Corey Kispert",
+   "displayName": "Corey Kispert",
+   "shortName": "C. Kispert",
+   "weight": 224,
+   "displayWeight": "224 lbs",
+   "height": 78,
+   "displayHeight": "6' 6\"",
+   "age": 27,
+   "dateOfBirth": "1999-03-03T08:00Z",
+   "slug": "corey-kispert",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4280151.png",
+    "alt": "Corey Kispert"
+   },
+   "jersey": "24",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 6
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "3146557",
+   "firstName": "Jock",
+   "lastName": "Landale",
+   "fullName": "Jock Landale",
+   "displayName": "Jock Landale",
+   "shortName": "J. Landale",
+   "weight": 255,
+   "displayWeight": "255 lbs",
+   "height": 83,
+   "displayHeight": "6' 11\"",
+   "age": 30,
+   "dateOfBirth": "1995-10-25T07:00Z",
+   "citizenship": "Australia",
+   "slug": "jock-landale",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/3146557.png",
+    "alt": "Jock Landale"
+   },
+   "jersey": "31",
+   "position": {
+    "id": "9",
+    "name": "Center",
+    "displayName": "Center",
+    "abbreviation": "C",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 6
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "2490149",
+   "firstName": "CJ",
+   "lastName": "McCollum",
+   "fullName": "CJ McCollum",
+   "displayName": "CJ McCollum",
+   "shortName": "C. McCollum",
+   "weight": 190,
+   "displayWeight": "190 lbs",
+   "height": 75,
+   "displayHeight": "6' 3\"",
+   "age": 35,
+   "dateOfBirth": "1991-09-19T07:00Z",
+   "debutYear": 2013,
+   "slug": "cj-mccollum",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/2490149.png",
+    "alt": "CJ McCollum"
+   },
+   "jersey": "3",
+   "hand": {
+    "type": "BOTH",
+    "abbreviation": "B",
+    "displayValue": "Both"
+   },
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:32Z"
+    }
+   ],
+   "experience": {
+    "years": 14
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4712845",
+   "firstName": "Isaac",
+   "lastName": "McKneely",
+   "fullName": "Isaac McKneely",
+   "displayName": "Isaac McKneely",
+   "shortName": "I. McKneely",
+   "weight": 195,
+   "displayWeight": "195 lbs",
+   "height": 76,
+   "displayHeight": "6' 4\"",
+   "age": 22,
+   "dateOfBirth": "2003-11-10T08:00Z",
+   "slug": "isaac-mckneely",
+   "jersey": "15",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4873201",
+   "firstName": "Asa",
+   "lastName": "Newell",
+   "fullName": "Asa Newell",
+   "displayName": "Asa Newell",
+   "shortName": "A. Newell",
+   "weight": 224,
+   "displayWeight": "224 lbs",
+   "height": 83,
+   "displayHeight": "6' 11\"",
+   "age": 21,
+   "dateOfBirth": "2005-10-05T07:00Z",
+   "slug": "asa-newell",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4873201.png",
+    "alt": "Asa Newell"
+   },
+   "jersey": "14",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 2
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4431680",
+   "firstName": "Onyeka",
+   "lastName": "Okongwu",
+   "fullName": "Onyeka Okongwu",
+   "displayName": "Onyeka Okongwu",
+   "shortName": "O. Okongwu",
+   "weight": 240,
+   "displayWeight": "240 lbs",
+   "height": 82,
+   "displayHeight": "6' 10\"",
+   "age": 25,
+   "dateOfBirth": "2000-12-11T08:00Z",
+   "debutYear": 2020,
+   "slug": "onyeka-okongwu",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4431680.png",
+    "alt": "Onyeka Okongwu"
+   },
+   "jersey": "17",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:33Z"
+    }
+   ],
+   "experience": {
+    "years": 7
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5105571",
+   "firstName": "Henri",
+   "lastName": "Veesaar",
+   "fullName": "Henri Veesaar",
+   "displayName": "Henri Veesaar",
+   "shortName": "H. Veesaar",
+   "weight": 227,
+   "displayWeight": "227 lbs",
+   "height": 84,
+   "displayHeight": "7' 0\"",
+   "age": 22,
+   "dateOfBirth": "2004-03-28T08:00Z",
+   "slug": "henri-veesaar",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/5105571.png",
+    "alt": "Henri Veesaar"
+   },
+   "jersey": "13",
+   "position": {
+    "id": "9",
+    "name": "Center",
+    "displayName": "Center",
+    "abbreviation": "C",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Out",
+     "date": "2026-09-21T19:50Z"
+    }
+   ],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4397183",
+   "firstName": "Aaron",
+   "lastName": "Wiggins",
+   "fullName": "Aaron Wiggins",
+   "displayName": "Aaron Wiggins",
+   "shortName": "A. Wiggins",
+   "weight": 190,
+   "displayWeight": "190 lbs",
+   "height": 77,
+   "displayHeight": "6' 5\"",
+   "age": 27,
+   "dateOfBirth": "1999-01-02T08:00Z",
+   "slug": "aaron-wiggins",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397183.png",
+    "alt": "Aaron Wiggins"
+   },
+   "jersey": "2",
+   "hand": {
+    "type": "RIGHT",
+    "abbreviation": "R",
+    "displayValue": "Right"
+   },
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:33Z"
+    }
+   ],
+   "experience": {
+    "years": 6
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4431714",
+   "firstName": "Jalen",
+   "lastName": "Wilson",
+   "fullName": "Jalen Wilson",
+   "displayName": "Jalen Wilson",
+   "shortName": "J. Wilson",
+   "weight": 220,
+   "displayWeight": "220 lbs",
+   "height": 78,
+   "displayHeight": "6' 6\"",
+   "age": 25,
+   "dateOfBirth": "2000-11-04T08:00Z",
+   "slug": "jalen-wilson",
+   "headshot": {
+    "href": "https://a.espncdn.com/i/headshots/nba/players/full/4431714.png",
+    "alt": "Jalen Wilson"
+   },
+   "jersey": "22",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 4
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  }
+ ],
+ "team": {
+  "id": "1",
+  "abbreviation": "ATL",
+  "location": "Atlanta",
+  "name": "Hawks",
+  "displayName": "Atlanta Hawks",
+  "clubhouse": "https://www.espn.com/nba/team/_/name/atl/atlanta-hawks",
+  "color": "c8102e",
+  "logo": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+  "recordSummary": "3-1",
+  "standingSummary": "1st in Southeast Division"
+ }
+}

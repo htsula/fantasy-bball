@@ -12,12 +12,6 @@ export const passwordSchema = z
   .min(8, "Password must be at least 8 characters")
   .max(200, "Password is too long");
 
-export const displayNameSchema = z
-  .string()
-  .trim()
-  .min(1, "Display name is required")
-  .max(50, "Display name must be at most 50 characters");
-
 export const loginSchema = z.object({
   username: z.string().trim().min(1, "Enter your username"),
   password: z.string().min(1, "Enter your password"),
@@ -33,7 +27,6 @@ export const newPasswordSchema = z
 export const inviteRedeemSchema = z
   .object({
     username: usernameSchema,
-    displayName: displayNameSchema,
     password: passwordSchema,
     confirmPassword: z.string(),
   })

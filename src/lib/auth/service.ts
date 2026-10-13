@@ -18,7 +18,7 @@ export const LOCKOUT_MS = 15 * 60 * 1000;
 const SLIDE_AFTER_MS = 1 * DAY;
 
 export class AuthError extends Error {
-  constructor(public code: "username_taken" | "invalid_token") {
+  constructor(public code: "username_taken" | "invalid_token" | "user_not_found") {
     super(code);
   }
 }
@@ -34,14 +34,13 @@ const lowerUsername = (name: string) => name.trim().toLowerCase();
 
 export async function createUser(
   db: Db,
-  input: { username: string; displayName: string; password: string; isSiteAdmin?: boolean },
+  input: { username: string; password: string; isSiteAdmin?: boolean },
 ): Promise<User> {
   try {
     const [user] = await db
       .insert(users)
       .values({
         username: input.username.trim(),
-        displayName: input.displayName.trim(),
         passwordHash: await hashPassword(input.password),
         isSiteAdmin: input.isSiteAdmin ?? false,
       })
@@ -187,7 +186,7 @@ export async function getInviteStatus(db: Db, token: string, now = new Date()): 
 /** Creates the user and consumes the invite atomically. Throws AuthError on failure. */
 export async function redeemInvite(
   db: Db,
-  input: { token: string; username: string; displayName: string; password: string },
+  input: { token: string; username: string; password: string },
   now = new Date(),
 ): Promise<User> {
   const passwordHash = await hashPassword(input.password);
@@ -198,7 +197,6 @@ export async function redeemInvite(
         .insert(users)
         .values({
           username: input.username.trim(),
-          displayName: input.displayName.trim(),
           passwordHash,
         })
         .returning();
@@ -272,13 +270,28 @@ export async function redeemPasswordReset(
       )
       .returning({ userId: passwordResets.userId });
     if (!claimed) throw new AuthError("invalid_token");
-    const [user] = await tx
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, claimed.userId))
-      .returning({ username: users.username });
-    await tx.delete(sessions).where(eq(sessions.userId, claimed.userId));
-    // A reset also clears any login lockout for that account.
-    await tx.delete(loginAttempts).where(eq(loginAttempts.usernameKey, lowerUsername(user.username)));
+    await applyNewPassword(tx, claimed.userId, passwordHash);
   });
+}
+
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/** Stores the hash, signs the user out everywhere and clears any login lockout. */
+async function applyNewPassword(tx: Tx, userId: string, passwordHash: string) {
+  const [user] = await tx
+    .update(users)
+    .set({ passwordHash })
+    .where(eq(users.id, userId))
+    .returning({ username: users.username });
+  await tx.delete(sessions).where(eq(sessions.userId, userId));
+  await tx.delete(loginAttempts).where(eq(loginAttempts.usernameKey, lowerUsername(user.username)));
+}
+
+/** Owner recovery: resets an existing user's password by username (case-insensitive). */
+export async function setPasswordByUsername(db: Db, username: string, password: string): Promise<User> {
+  const existing = await findUserByUsername(db, username);
+  if (!existing) throw new AuthError("user_not_found");
+  const passwordHash = await hashPassword(password);
+  await db.transaction((tx) => applyNewPassword(tx, existing.id, passwordHash));
+  return { ...existing, passwordHash };
 }

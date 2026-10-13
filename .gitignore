@@ -46,3 +46,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# owner-only helper scripts and secrets (never committed)
+/local/

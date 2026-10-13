@@ -19,14 +19,13 @@ let adminId: string;
 
 beforeAll(async () => {
   ({ db, close } = await createTestDb());
-  adminId = (await createUser(db, { username: "root", displayName: "Root", password: "password123", isSiteAdmin: true })).id;
+  adminId = (await createUser(db, { username: "root", password: "password123", isSiteAdmin: true })).id;
 });
 afterAll(() => close());
 
 const form = (token: string, username: string) => ({
   token,
   username,
-  displayName: "New Person",
   password: "password123",
 });
 

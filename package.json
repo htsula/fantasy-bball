@@ -16,6 +16,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed-nba": "tsx scripts/seed-nba.ts",
+    "sync:daily": "tsx scripts/sync-daily.ts",
     "create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {

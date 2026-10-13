@@ -1,0 +1,1678 @@
+{
+ "injuries": [
+  {
+   "id": "1",
+   "displayName": "Atlanta Hawks",
+   "injuries": [
+    {
+     "id": "534140",
+     "longComment": "Gilbert continues to deal with patella tendinitis. His last chance to appear this preseason is Friday against the Mavericks.",
+     "shortComment": "Gilbert (knee) won't play in Monday's preseason game against the Thunder, per Brad Rowland of the Locked On Podcast Network.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:36Z",
+     "athlete": {
+      "firstName": "Keshon",
+      "lastName": "Gilbert",
+      "displayName": "Keshon Gilbert",
+      "shortName": "K. Gilbert",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4585618.png",
+       "alt": "Keshon Gilbert"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4585618/keshon-gilbert",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Knee",
+      "location": "Leg",
+      "detail": "Tendinitis",
+      "side": "Left",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534138",
+     "longComment": "Wiggins and most of Atlanta's regulars won't play in the penultimate preseason game. He finished with 13 points (4-9 FG, 3-6 3Pt, 2-2 FT), two rebounds, an assist and two steals across 20 minutes off the bench in Saturday's 119-117 preseason win over the Pacers.",
+     "shortComment": "Wiggins (rest) won't play in Monday's preseason game against the Thunder, Brad Rowland of the Locked On Podcast Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:33Z",
+     "athlete": {
+      "firstName": "Aaron",
+      "lastName": "Wiggins",
+      "displayName": "Aaron Wiggins",
+      "shortName": "A. Wiggins",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397183.png",
+       "alt": "Aaron Wiggins"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4397183/aaron-wiggins",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534137",
+     "longComment": "Okongwu is getting the night off Monday with Atlanta resting a number of starters. His next chance to play arrives Friday against Dallas.",
+     "shortComment": "Okongwu (rest) is out for Monday's preseason game against the Thunder, per Brad Rowland of the Locked On Podcast Network.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:33Z",
+     "athlete": {
+      "firstName": "Onyeka",
+      "lastName": "Okongwu",
+      "displayName": "Onyeka Okongwu",
+      "shortName": "O. Okongwu",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4431680.png",
+       "alt": "Onyeka Okongwu"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4431680/onyeka-okongwu",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534136",
+     "longComment": "McCollum and most of Atlanta's regulars won't play in the penultimate preseason game. He recorded 12 points (2-4 FG, 1-2 3Pt, 7-7 FT) and five rebounds across 19 minutes in Saturday's 119-117 preseason win over the Pacers.",
+     "shortComment": "McCollum (rest) won't play in Monday's preseason game against the Thunder, Brad Rowland of the Locked On Podcast Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:32Z",
+     "athlete": {
+      "firstName": "CJ",
+      "lastName": "McCollum",
+      "displayName": "CJ McCollum",
+      "shortName": "C. McCollum",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/2490149.png",
+       "alt": "CJ McCollum"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/2490149/cj-mccollum",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534135",
+     "longComment": "Dort is sitting out Monday for maintenance purposes. The veteran swingman's next chance to play is Friday against Dallas.",
+     "shortComment": "Dort (rest) is out for Monday's preseason game against the Thunder, per Brad Rowland of the Locked On Podcast Network.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:30Z",
+     "athlete": {
+      "firstName": "Luguentz",
+      "lastName": "Dort",
+      "displayName": "Luguentz Dort",
+      "shortName": "L. Dort",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397020.png",
+       "alt": "Luguentz Dort"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4397020/luguentz-dort",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534134",
+     "longComment": "Johnson and most of Atlanta's regulars won't suit up for the penultimate preseason contest. He tallied 20 points (8-12 FG, 2-2 3Pt, 2-3 FT), seven rebounds and three assists over 25 minutes in Saturday's 119-117 preseason win over the Pacers.",
+     "shortComment": "Johnson (rest) won't play in Monday's preseason game against the Thunder, Brad Rowland of the Locked On Podcast Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:29Z",
+     "athlete": {
+      "firstName": "Jalen",
+      "lastName": "Johnson",
+      "displayName": "Jalen Johnson",
+      "shortName": "J. Johnson",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4701230.png",
+       "alt": "Jalen Johnson"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4701230/jalen-johnson",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534133",
+     "longComment": "Daniels and most of Atlanta's regulars will rest during the Hawks' penultimate preseason contest. He tallied 13 points (6-16 FG, 1-3 3Pt), 11 rebounds, an assist and a steal across 21 minutes in Thursday's 123-116 preseason win over the Spurs but struggled with his shot against the Pacers on Saturday.",
+     "shortComment": "Daniels (rest) has been ruled out for Monday's preseason game against the Thunder, Brad Rowland of the Locked On Podcast Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T21:27Z",
+     "athlete": {
+      "firstName": "Dyson",
+      "lastName": "Daniels",
+      "displayName": "Dyson Daniels",
+      "shortName": "D. Daniels",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4869342.png",
+       "alt": "Dyson Daniels"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4869342/dyson-daniels",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "-57577",
+     "longComment": "Veesaar suffered the injury during a workout on Sept. 15, and an MRI confirmed the diagnosis. The No. 52 overall pick in the 2026 NBA Draft, Veesaar was expected to spend a lot of time with Atlanta's G League affiliate this season.",
+     "shortComment": "Veesaar was diagnosed with a torn right ACL and is expected to miss the 2026-27 season, the Hawks announced Monday.",
+     "status": "Out",
+     "date": "2026-09-21T19:50Z",
+     "athlete": {
+      "firstName": "Henri",
+      "lastName": "Veesaar",
+      "displayName": "Henri Veesaar",
+      "shortName": "H. Veesaar",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5105571.png",
+       "alt": "Henri Veesaar"
+      },
+      "position": {
+       "id": "9",
+       "name": "Center",
+       "displayName": "Center",
+       "abbreviation": "C",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5105571/henri-veesaar",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "4",
+      "name": "INJURY_STATUS_OUT",
+      "description": "out",
+      "abbreviation": "O"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "OFS",
+       "abbreviation": "OFS"
+      },
+      "type": "Knee",
+      "location": "Leg",
+      "side": "Right",
+      "returnDate": "2027-07-01"
+     }
+    },
+    {
+     "id": "-56292",
+     "longComment": "Gueye will be re-evaluated by medical staff in 3-to-4 months, which means he'll miss all of training camp and preseason and likely the start of the 2026-27 regular season. It's a brutal blow for the fourth-year big man, given that the Hawks used the No. 23 overall pick of the 2026 NBA Draft to select St. John's product Zuby Ejiofor. Gueye's absence means Ejiofor will have more opportunities in the preseason, and the rookie could establish a key role off the bench behind Onyeka Okongwu and projected backup center Jock Landale (ankle).",
+     "shortComment": "Gueye underwent surgery Tuesday to repair a fractured left foot that he suffered during a workout last week, Brad Rowland of the Locked On Podcast Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-07-19T00:14Z",
+     "athlete": {
+      "firstName": "Mouhamed",
+      "lastName": "Gueye",
+      "displayName": "Mouhamed Gueye",
+      "shortName": "M. Gueye",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4712863.png",
+       "alt": "Mouhamed Gueye"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4712863/mouhamed-gueye",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Foot",
+      "location": "Leg",
+      "detail": "Fracture",
+      "side": "Left",
+      "returnDate": "2026-10-21"
+     }
+    }
+   ]
+  },
+  {
+   "id": "2",
+   "displayName": "Boston Celtics",
+   "injuries": [
+    {
+     "id": "533935",
+     "longComment": "Garza took an inadvertent elbow to the nose from teammate Chris Cenac, and the former was taken to the locker room shortly thereafter. Assuming Garza doesn't return, he'll end his night with eight points (4-9 FG), seven rebounds and one assist over 11 minutes.",
+     "shortComment": "Garza (nose) went to the locker room late in the fourth quarter of Saturday's preseason game against the 76ers, Bobby Manning of CLNS Media Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-11T02:21Z",
+     "athlete": {
+      "firstName": "Luka",
+      "lastName": "Garza",
+      "displayName": "Luka Garza",
+      "shortName": "L. Garza",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4277951.png",
+       "alt": "Luka Garza"
+      },
+      "position": {
+       "id": "9",
+       "name": "Center",
+       "displayName": "Center",
+       "abbreviation": "C",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4277951/luka-garza",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Nose",
+      "location": "Head",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "533908",
+     "longComment": "Carter played 25 minutes during Boston's preseason opener against Cleveland on Thursday, but the third-year pro is under the weather and not be available for Saturday's contest. His next chance to play is Wednesday against Charlotte.",
+     "shortComment": "Carter (illness) has been ruled out for Saturday's exhibition game against the 76ers, Jack Simone of BostonSportsJournal.com reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-10T23:58Z",
+     "athlete": {
+      "firstName": "Devin",
+      "lastName": "Carter",
+      "displayName": "Devin Carter",
+      "shortName": "D. Carter",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4433188.png",
+       "alt": "Devin Carter"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4433188/devin-carter",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Illness",
+      "location": "Other",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "533907",
+     "longComment": "Harper is working through right shoulder illness, which has prevented him from playing in each of the Celtics' first two preseason games. His next opportunity to play is Wednesday against the Hornets.",
+     "shortComment": "Harper (shoulder) has been ruled out for Saturday's preseason game against the 76ers, Jack Simone of BostonSportsJournal.com reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-10T23:57Z",
+     "athlete": {
+      "firstName": "Ron",
+      "lastName": "Harper Jr.",
+      "displayName": "Ron Harper Jr.",
+      "shortName": "R. Harper Jr.",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397251.png",
+       "alt": "Ron Harper Jr."
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4397251/ron-harper-jr",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Shoulder",
+      "location": "Arm",
+      "detail": "Soreness",
+      "side": "Right",
+      "returnDate": "2026-10-14"
+     }
+    }
+   ]
+  },
+  {
+   "id": "17",
+   "displayName": "Brooklyn Nets",
+   "injuries": [
+    {
+     "id": "534083",
+     "longComment": "Jefferson will be sidelined for his third straight exhibition. The rookie forward will have one more chance to return in the preseason Oct. 14 against the Heat.",
+     "shortComment": "Jefferson (back) is out for Monday's preseason game against the Wizards, Brian Lewis of the New York Post reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T15:02Z",
+     "athlete": {
+      "firstName": "Joshua",
+      "lastName": "Jefferson",
+      "displayName": "Joshua Jefferson",
+      "shortName": "J. Jefferson",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4870564.png",
+       "alt": "Joshua Jefferson"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4870564/joshua-jefferson",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Back",
+      "location": "Torso",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "534081",
+     "longComment": "Brown has yet to suit up during the preseason as he continues to work his way back from a left ankle issue. His final chance to get in an exhibition is Wednesday against the Heat.",
+     "shortComment": "Brown (ankle) is out for Monday's preseason game against the Wizards, Brian Lewis of the New York Post reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T14:57Z",
+     "athlete": {
+      "firstName": "Mikel",
+      "lastName": "Brown Jr.",
+      "displayName": "Mikel Brown Jr.",
+      "shortName": "M. Brown Jr.",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5101761.png",
+       "alt": "Mikel Brown Jr."
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5101761/mikel-brown-jr",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Ankle",
+      "location": "Leg",
+      "side": "Left",
+      "returnDate": "2026-10-14"
+     }
+    }
+   ]
+  },
+  {
+   "id": "30",
+   "displayName": "Charlotte Hornets",
+   "injuries": [
+    {
+     "id": "534033",
+     "longComment": "Anderson will miss a second straight game due to a left ankle sprain. His next chance to suit up will come in Wednesday's exhibition against the Celtics.",
+     "shortComment": "Anderson (ankle) has been ruled out for Sunday's preseason game against Milwaukee.",
+     "status": "Day-To-Day",
+     "date": "2026-10-11T21:19Z",
+     "athlete": {
+      "firstName": "Christian",
+      "lastName": "Anderson",
+      "displayName": "Christian Anderson",
+      "shortName": "C. Anderson",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5060701.png",
+       "alt": "Christian Anderson"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5060701/christian-anderson",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Ankle",
+      "location": "Leg",
+      "detail": "Sprain",
+      "side": "Left",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "534032",
+     "longComment": "Allen performed well in the Hornets' opening preseason game, posting 13 points in 14 minutes, but he will miss Sunday's contest with a knee injury. Sion James and Royce O'Neale could see extra action with Allen out of the lineup.",
+     "shortComment": "Allen will not play in Sunday's preseason game against the Bucks due to right knee soreness.",
+     "status": "Day-To-Day",
+     "date": "2026-10-11T21:18Z",
+     "athlete": {
+      "firstName": "Grayson",
+      "lastName": "Allen",
+      "displayName": "Grayson Allen",
+      "shortName": "G. Allen",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/3135045.png",
+       "alt": "Grayson Allen"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/3135045/grayson-allen",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Knee",
+      "location": "Leg",
+      "detail": "Soreness",
+      "side": "Right",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "533223",
+     "longComment": "It doesn't sound like the two-way guard will be available for the preseason, but he's hopeful to not miss any time during the G League season. Boswell is not expected to be a significant part of the Hornets' rotation this season.",
+     "shortComment": "Boswell is rehabbing a right knee injury, and he's hopeful to be cleared for basketball activities prior to the start of the G League season in late October.",
+     "status": "Day-To-Day",
+     "date": "2026-10-05T21:28Z",
+     "athlete": {
+      "firstName": "Kylan",
+      "lastName": "Boswell",
+      "displayName": "Kylan Boswell",
+      "shortName": "K. Boswell",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4684269.png",
+       "alt": "Kylan Boswell"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4684269/kylan-boswell",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Knee",
+      "location": "Leg",
+      "side": "Right",
+      "returnDate": "2026-10-21"
+     }
+    },
+    {
+     "id": "533215",
+     "longComment": "White missed time with a left calf strain last season and is now in jeopardy of starting the regular season on the inactive list. If the 26-year-old guard is forced to miss time beyond the preseason, Christian Anderson and Dennis Schroder would likely see increased playing time.",
+     "shortComment": "The Hornets announced Monday that White suffered a left calf strain during training camp and will not play during the preseason.",
+     "status": "Day-To-Day",
+     "date": "2026-10-05T20:56Z",
+     "athlete": {
+      "firstName": "Coby",
+      "lastName": "White",
+      "displayName": "Coby White",
+      "shortName": "C. White",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4395651.png",
+       "alt": "Coby White"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4395651/coby-white",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Calf",
+      "location": "Leg",
+      "detail": "Strain",
+      "side": "Left",
+      "returnDate": "2026-10-21"
+     }
+    },
+    {
+     "id": "532844",
+     "longComment": "Knueppel's status for Opening Night remains uncertain as he continues to work his way back from his left hamstring injury. Peterson's comments suggest the Hornets aren't ready to rule out the second-year wing, though his availability will likely become clearer as training camp progresses. He has already been ruled out for the entire preseason, to be clear.",
+     "shortComment": "Hornets general manager Jeff Peterson said Monday that he \"doesn't know\" whether Knueppel (hamstring) will be available for the team's regular-season opener against the Nets, Owen Watterson of SI.com reports.",
+     "status": "Day-To-Day",
+     "date": "2026-09-28T14:25Z",
+     "athlete": {
+      "firstName": "Kon",
+      "lastName": "Knueppel",
+      "displayName": "Kon Knueppel",
+      "shortName": "K. Knueppel",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5061575.png",
+       "alt": "Kon Knueppel"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5061575/kon-knueppel",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Hamstring",
+      "location": "Leg",
+      "side": "Left",
+      "returnDate": "2026-10-21"
+     }
+    },
+    {
+     "id": "-57589",
+     "longComment": "Williams will be re-evaluated the first week of the regular season, putting his status for Opening Night in the air. Williams will have a difficult path to minutes this season as he competes with the likes of Naz Reid, Royce O'Neale and Tidjane Salaun.",
+     "shortComment": "Williams will miss the preseason after suffering a right hamstring injury, the Hornets announced Friday.",
+     "status": "Day-To-Day",
+     "date": "2026-09-25T23:03Z",
+     "athlete": {
+      "firstName": "Grant",
+      "lastName": "Williams",
+      "displayName": "Grant Williams",
+      "shortName": "G. Williams",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4066218.png",
+       "alt": "Grant Williams"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4066218/grant-williams",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Hamstring",
+      "location": "Leg",
+      "side": "Right",
+      "returnDate": "2026-10-21"
+     }
+    }
+   ]
+  },
+  {
+   "id": "4",
+   "displayName": "Chicago Bulls",
+   "injuries": [
+    {
+     "id": "534245",
+     "longComment": "Collins has yet to suit up in the preseason due to a toe injury but is making progress ahead of the regular season. The big man's final chance to suit up in the preseason will come Friday against Minnesota.",
+     "shortComment": "Collins (toe) is progressing in his recovery but has been ruled out for Wednesday's preseason meeting with the Bucks, K.C. Johnson of Chicago Sports Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-13T19:11Z",
+     "athlete": {
+      "firstName": "Zach",
+      "lastName": "Collins",
+      "displayName": "Zach Collins",
+      "shortName": "Z. Collins",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4066650.png",
+       "alt": "Zach Collins"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4066650/zach-collins",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Toe",
+      "location": "Leg",
+      "detail": "Surgery",
+      "side": "Right",
+      "returnDate": "2026-10-16"
+     }
+    },
+    {
+     "id": "534244",
+     "longComment": "Awaka banged his knee in Friday's preseason game against Memphis. The undrafted rookie can be deemed questionable for Wednesday's exhibition versus the Bucks.",
+     "shortComment": "Awaka (knee) didn't practice Tuesday, per K.C. Johnson of Chicago Sports Network.",
+     "status": "Day-To-Day",
+     "date": "2026-10-13T19:08Z",
+     "athlete": {
+      "firstName": "Tobe",
+      "lastName": "Awaka",
+      "displayName": "Tobe Awaka",
+      "shortName": "T. Awaka",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5105555.png",
+       "alt": "Tobe Awaka"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5105555/tobe-awaka",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Knee",
+      "location": "Leg",
+      "side": "Not Specified",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "534243",
+     "longComment": "It's unclear why Okoro didn't practice, though he can be considered questionable for Wednesday's exhibition against Milwaukee. If the 25-year-old wing is unable to suit up, Leonard Miller, Jordan Hawkins and Buddy Hield could see a bump in playing time.",
+     "shortComment": "Okoro (undisclosed) didn't participate in Tuesday's practice, K.C. Johnson of Chicago Sports Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-13T19:05Z",
+     "athlete": {
+      "firstName": "Isaac",
+      "lastName": "Okoro",
+      "displayName": "Isaac Okoro",
+      "shortName": "I. Okoro",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4432822.png",
+       "alt": "Isaac Okoro"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4432822/isaac-okoro",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Undisclosed",
+      "location": "Other",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "534079",
+     "longComment": "Sellers continues to deal with lower-back soreness that has limited his preseason availability. The two-way guard will look to return to action as Chicago completes its exhibition schedule, though his immediate fantasy outlook remains limited.",
+     "shortComment": "Sellers (back) did not play in Sunday's 133-128 preseason loss to Denver.",
+     "status": "Day-To-Day",
+     "date": "2026-10-12T14:18Z",
+     "athlete": {
+      "firstName": "Jaylin",
+      "lastName": "Sellers",
+      "displayName": "Jaylin Sellers",
+      "shortName": "J. Sellers",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4898010.png",
+       "alt": "Jaylin Sellers"
+      },
+      "position": {
+       "id": "3",
+       "name": "Guard",
+       "displayName": "Guard",
+       "abbreviation": "G",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4898010/jaylin-sellers",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Back",
+      "location": "Torso",
+      "returnDate": "2026-10-14"
+     }
+    },
+    {
+     "id": "533197",
+     "longComment": "This is a huge blow for Claxton and it rules him out for the entire preseason. For now, fantasy managers can consider him questionable for Opening Night on Oct. 21 against the Raptors. Jalen Smith is the next man up on the depth chart for Chicago, followed by Zach Collins (toe).",
+     "shortComment": "Claxton tweaked his hamstring and will be re-evaluated in two weeks, Chuck Swirsky of the Bulls Radio Network of the Bulls Radio Network reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-05T18:00Z",
+     "athlete": {
+      "firstName": "Nic",
+      "lastName": "Claxton",
+      "displayName": "Nic Claxton",
+      "shortName": "N. Claxton",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4278067.png",
+       "alt": "Nic Claxton"
+      },
+      "position": {
+       "id": "9",
+       "name": "Center",
+       "displayName": "Center",
+       "abbreviation": "C",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4278067/nic-claxton",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Hamstring",
+      "location": "Leg",
+      "side": "Not Specified",
+      "returnDate": "2026-10-21"
+     }
+    }
+   ]
+  },
+  {
+   "id": "5",
+   "displayName": "Cleveland Cavaliers",
+   "injuries": [
+    {
+     "id": "534042",
+     "longComment": "Tomlin will miss a second straight contest to open the preseason due to lower back soreness. His next chance to suit up comes Wednesday against the Magic.",
+     "shortComment": "Tomlin (back) is out for Sunday's preseason game against the Magic, Serena Winters of FanDuel Sports Network Ohio reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-11T21:41Z",
+     "athlete": {
+      "firstName": "Nae'Qwan",
+      "lastName": "Tomlin",
+      "displayName": "Nae'Qwan Tomlin",
+      "shortName": "N. Tomlin",
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5106268.png",
+       "alt": "Nae'Qwan Tomlin"
+      },
+      "position": {
+       "id": "7",
+       "name": "Forward",
+       "displayName": "Forward",
+       "abbreviation": "F",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5106268/naeqwan-tomlin",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Back",
+      "location": "Torso",
+      "returnDate": "2026-10-13"
+     }
+    },
+    {
+     "id": "534041",
+     "longComment": "Diop missed Thursday's preseason-opening loss to the Celtics for undisclosed reasons but is now listed as out due to a left knee injury. His next chance to play in the preseason will come in Tuesday's rematch against Orlando.",
+     "shortComment": "Diop (knee) has been ruled out for Sunday's preseason game against the Magic, Serena Winters of FanDuel Sports Network Ohio reports.",
+     "status": "Day-To-Day",
+     "date": "2026-10-11T21:40Z",
+     "athlete": {
+      "firstName": "Khalifa",
+      "lastName": "Diop",
+      "displayName": "Khalifa Diop",
+      "shortName": "K. Diop",
+      "position": {
+       "id": "9",
+       "name": "Center",
+       "displayName": "Center",
+       "abbreviation": "C",
+       "leaf": false
+      },
+      "status": {
+       "id": "1",
+       "name": "Active",
+       "type": "active",
+       "abbreviation": "Active"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4997530/khalifa-diop",
+        "rel": [
+         "playercard",
+         "desktop",
+         "athlete"
+        ]
+       }
+      ]
+     },
+     "source": {
+      "id": "1",
+      "description": "basic/manual",
+      "state": "basic"
+     },
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Knee",
+      "location": "Leg",
+      "side": "Left",
+      "returnDate": "2026-10-13"
+     }
+    }
+   ]
+  }
+ ]
+}

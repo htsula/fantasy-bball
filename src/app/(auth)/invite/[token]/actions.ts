@@ -12,7 +12,7 @@ export async function redeemInviteAction(
   formData: FormData,
 ): Promise<FormState> {
   const raw = Object.fromEntries(formData) as Record<string, string>;
-  const values = { username: raw.username ?? "", displayName: raw.displayName ?? "" };
+  const values = { username: raw.username ?? "" };
   const parsed = inviteRedeemSchema.safeParse(raw);
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors, values };

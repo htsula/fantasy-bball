@@ -1,6 +1,7 @@
 /**
  * Dev-only seed data. Refuses to run against a real Postgres database.
- * Later milestones extend this with demo leagues, players and stats.
+ * Also loads the saved ESPN fixtures (teams, one roster, a final game with its box score,
+ * injuries, news) so the NBA pages have data offline. Later milestones add demo leagues.
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -8,6 +9,7 @@ config();
 
 import { db, resolvePgliteDataDir } from "./index";
 import { createUser, findUserByUsername } from "../lib/auth/service";
+import { seedNbaFixtures } from "../lib/nba/seed-fixtures";
 
 async function main() {
   if (resolvePgliteDataDir() === null) {
@@ -17,7 +19,6 @@ async function main() {
   if (!(await findUserByUsername(db, "admin"))) {
     await createUser(db, {
       username: "admin",
-      displayName: "Admin",
       password: "password123",
       isSiteAdmin: true,
     });
@@ -25,6 +26,7 @@ async function main() {
   } else {
     console.log("Seed data already present.");
   }
+  console.log("Seeded NBA fixtures:", await seedNbaFixtures(db));
   process.exit(0);
 }
 

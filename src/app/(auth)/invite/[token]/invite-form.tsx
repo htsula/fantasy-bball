@@ -32,14 +32,6 @@ export function InviteForm({ token }: { token: string }) {
             required
           />
           <FormField
-            name="displayName"
-            label="Display name"
-            autoComplete="name"
-            defaultValue={state.values?.displayName}
-            errors={errs?.displayName}
-            required
-          />
-          <FormField
             name="password"
             label="Password (min 8 characters)"
             type="password"

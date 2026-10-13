@@ -17,8 +17,8 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    // Migrate + seed an admin into a throwaway PGlite dir, then start the dev server on it.
-    command: `npm run db:migrate && npm run create-admin -- --username admin && npx next dev -p ${PORT}`,
+    // Migrate + seed an admin and the NBA fixtures into a throwaway PGlite dir, then start the dev server on it.
+    command: `npm run db:migrate && npm run create-admin -- --username admin && npm run db:seed-nba && npx next dev -p ${PORT}`,
     url: `http://localhost:${PORT}/login`,
     timeout: 180_000,
     reuseExistingServer: false,
