@@ -33,3 +33,13 @@ export function fmtPct(v: number | null | undefined): string {
 export function seasonLabel(season: number): string {
   return `${season - 1}-${String(season).slice(2)}`;
 }
+
+/** YYYY-MM-DD calendar date -> "Oct 21" (or "Oct 21, 2026" with year). No timezone math. */
+export function fmtYmd(date: string, withYear = false): string {
+  return new Date(date + "T12:00:00Z").toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    ...(withYear ? { year: "numeric" } : {}),
+  });
+}

@@ -45,11 +45,84 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_id_idx").on(t.userId)],
 );
 
+// ---------------------------------------------------------------------------------------------
+// Leagues (milestone 3). Settings are validated jsonb (see src/lib/fantasy/settings.ts).
+// ---------------------------------------------------------------------------------------------
+
+export type LeagueStatus = "setup" | "drafting" | "in_season" | "playoffs" | "complete";
+
+export const leagues = pgTable("leagues", {
+  id: id(),
+  name: text("name").notNull(),
+  season: integer("season").notNull(), // ESPN season year (2027 = 2026-27)
+  commissionerId: uuid("commissioner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  status: text("status").$type<LeagueStatus>().notNull().default("setup"),
+  settings: jsonb("settings").$type<Record<string, unknown>>().notNull(),
+  createdAt: createdAt(),
+});
+
+export const teams = pgTable(
+  "teams",
+  {
+    id: id(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    abbrev: text("abbrev").notNull(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("teams_league_name_lower_idx").on(t.leagueId, sql`lower(${t.name})`),
+    uniqueIndex("teams_league_abbrev_upper_idx").on(t.leagueId, sql`upper(${t.abbrev})`),
+    uniqueIndex("teams_league_owner_idx").on(t.leagueId, t.ownerId),
+    index("teams_owner_idx").on(t.ownerId),
+  ],
+);
+
+export const matchupPeriods = pgTable(
+  "matchup_periods",
+  {
+    id: id(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    startDate: date("start_date", { mode: "string" }).notNull(), // ET dates, inclusive
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    isPlayoff: boolean("is_playoff").notNull().default(false),
+    playoffRound: integer("playoff_round"),
+  },
+  (t) => [uniqueIndex("matchup_periods_league_number_idx").on(t.leagueId, t.number)],
+);
+
+// A bye is a row with homeTeamId set and awayTeamId null. Playoff matchups are created later.
+export const matchups = pgTable(
+  "matchups",
+  {
+    id: id(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => matchupPeriods.id, { onDelete: "cascade" }),
+    homeTeamId: uuid("home_team_id").references(() => teams.id, { onDelete: "cascade" }),
+    awayTeamId: uuid("away_team_id").references(() => teams.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("matchups_league_period_idx").on(t.leagueId, t.periodId)],
+);
+
 export const invites = pgTable("invites", {
   id: id(),
   tokenHash: text("token_hash").notNull().unique(),
-  // Will reference leagues(id) once leagues exist (milestone 3).
-  leagueId: uuid("league_id"),
+  // Set for league invites: redeeming one also puts the user on a new team in that league.
+  leagueId: uuid("league_id").references(() => leagues.id, { onDelete: "cascade" }),
   createdBy: uuid("created_by")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -259,3 +332,164 @@ export type SyncRun = typeof syncRuns.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type Invite = typeof invites.$inferSelect;
+export type League = typeof leagues.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type MatchupPeriod = typeof matchupPeriods.$inferSelect;
+export type Matchup = typeof matchups.$inferSelect;
+
+// ---------------------------------------------------------------------------------------------
+// Draft, rosters and notifications (milestone 4). All additive.
+// ---------------------------------------------------------------------------------------------
+
+export type DraftStatus = "pending" | "snake" | "waves" | "complete";
+export type DraftPhase = "snake" | "wave";
+
+export const drafts = pgTable("drafts", {
+  id: id(),
+  leagueId: uuid("league_id")
+    .notNull()
+    .unique()
+    .references(() => leagues.id, { onDelete: "cascade" }),
+  status: text("status").$type<DraftStatus>().notNull().default("pending"),
+  // Team ids in first-round order (randomized at start).
+  order: uuid("order").array().notNull(),
+  maxRoster: integer("max_roster").notNull(),
+  snakeRounds: integer("snake_rounds").notNull(),
+  totalRounds: integer("total_rounds").notNull(),
+  // Next snake overall pick (1-based). Stays at snakeRounds * teams + 1 once the snake is over.
+  currentPick: integer("current_pick").notNull().default(1),
+  currentWave: integer("current_wave"),
+  waveOpenedAt: tstz("wave_opened_at"),
+  startedAt: tstz("started_at"),
+  completedAt: tstz("completed_at"),
+  startedBy: uuid("started_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+});
+
+export const draftPicks = pgTable(
+  "draft_picks",
+  {
+    id: id(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => drafts.id, { onDelete: "cascade" }),
+    overallPick: integer("overall_pick").notNull(),
+    round: integer("round").notNull(), // the team's nth pick
+    phase: text("phase").$type<DraftPhase>().notNull(),
+    wave: integer("wave"),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => nbaPlayers.id, { onDelete: "restrict" }),
+    madeBy: uuid("made_by").references(() => users.id, { onDelete: "set null" }),
+    madeByCommissioner: boolean("made_by_commissioner").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("draft_picks_draft_player_idx").on(t.draftId, t.playerId),
+    uniqueIndex("draft_picks_draft_overall_idx").on(t.draftId, t.overallPick),
+    index("draft_picks_team_idx").on(t.teamId),
+  ],
+);
+
+export const draftQueue = pgTable(
+  "draft_queue",
+  {
+    id: id(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => nbaPlayers.id, { onDelete: "cascade" }),
+    rank: integer("rank").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("draft_queue_team_player_idx").on(t.teamId, t.playerId)],
+);
+
+export type AcquiredVia = "draft" | "add" | "trade" | "commissioner";
+
+export const rosterEntries = pgTable(
+  "roster_entries",
+  {
+    id: id(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => nbaPlayers.id, { onDelete: "restrict" }),
+    acquiredVia: text("acquired_via").$type<AcquiredVia>().notNull(),
+    acquiredAt: tstz("acquired_at").notNull().defaultNow(),
+    releasedAt: tstz("released_at"),
+    releasedVia: text("released_via"),
+  },
+  (t) => [
+    // A player is on at most one active roster per league.
+    uniqueIndex("roster_entries_active_player_idx")
+      .on(t.leagueId, t.playerId)
+      .where(sql`${t.releasedAt} is null`),
+    index("roster_entries_team_idx").on(t.teamId),
+  ],
+);
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+    lastSuccessAt: tstz("last_success_at"),
+    failureCount: integer("failure_count").notNull().default(0),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    leagueId: uuid("league_id").references(() => leagues.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    url: text("url"),
+    readAt: tstz("read_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("notifications_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+// One row per (user, type) the user changed; missing rows mean "everything on".
+export const notificationPrefs = pgTable(
+  "notification_prefs",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    push: boolean("push").notNull().default(true),
+    inApp: boolean("in_app").notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.type] })],
+);
+
+export type Draft = typeof drafts.$inferSelect;
+export type DraftPick = typeof draftPicks.$inferSelect;
+export type RosterEntry = typeof rosterEntries.$inferSelect;
+export type AppNotification = typeof notifications.$inferSelect;

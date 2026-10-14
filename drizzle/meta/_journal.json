@@ -22,6 +22,20 @@
       "when": 1791923615797,
       "tag": "0002_drop_display_name",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791934456758,
+      "tag": "0003_leagues",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791945093421,
+      "tag": "0004_draft_notifications",
+      "breakpoints": true
     }
   ]
 }

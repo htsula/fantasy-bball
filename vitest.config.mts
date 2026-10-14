@@ -7,5 +7,6 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     testTimeout: 30_000, // PGlite startup + migrations
+    hookTimeout: 60_000, // beforeAll creates a PGlite db and applies every migration
   },
 });

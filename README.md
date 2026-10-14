@@ -3,7 +3,7 @@
 Private fantasy NBA app (H2H points) for a friend group. Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui,
 Postgres via Drizzle ORM, deployed on Vercel with Neon.
 
-Status: **Milestone 2 (NBA data)** on top of Milestone 1 (auth, admin, DB): ESPN data sync, crons, a Players browser with player cards, and an NBA scoreboard. Leagues and the rest follow.
+Status: **Milestone 4 (Draft + push notifications)** on top of Milestone 3 (Leagues), Milestone 2 (NBA data: ESPN sync, crons, Players browser, NBA scoreboard) and Milestone 1 (auth, admin, DB). The draft, rosters, scoring and the rest follow.
 
 ## Local setup
 
@@ -62,6 +62,7 @@ $env:DATABASE_URL='...'; npm run create-admin -- --username yourname --reset
 | `npm run db:seed-nba` | Just the NBA fixtures part of the seed |
 | `npm run sync:daily [-- --season 2026] [--budget-seconds 300]` | Run the daily NBA sync against the **live ESPN API** into whatever `DATABASE_URL` points at (see below) |
 | `npm run create-admin -- --username X` | Create a site admin (`--reset` resets an existing user's password) |
+| `npm run vapid:generate` | Print a new Web Push VAPID key pair to the console (never written to a file) |
 
 ## Environment variables
 
@@ -70,6 +71,7 @@ $env:DATABASE_URL='...'; npm run create-admin -- --username yourname --reset
 | `DATABASE_URL` | Postgres URL (Neon). Unset or `pglite:<dir>` uses embedded PGlite. `pglite:memory://` is in-memory. |
 | `CRON_SECRET` | Required for `/api/cron/*`; requests need `Authorization: Bearer <secret>`. Vercel Cron sends it automatically. GitHub Actions needs the same value as an Actions **secret** (see Cron setup). |
 | `NEXT_PUBLIC_APP_URL` | Base URL used in invite/reset links, e.g. `https://your-app.vercel.app`. Falls back to the request host. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push. All three or push is skipped (in-app notifications still work). See **Notifications and PWA**. |
 | `ADMIN_PASSWORD` | Only for `create-admin`. |
 
 There is no `SESSION_SECRET`: sessions are random 32-byte tokens whose sha256 hash is stored in the DB
@@ -153,15 +155,78 @@ npm run sync:daily -- --season 2026     # also backfill last season's box scores
 For a throwaway database: `DATABASE_URL=pglite:./.pglite-synctest npm run db:migrate && DATABASE_URL=pglite:./.pglite-synctest npm run sync:daily`, then delete the folder.
 Offline, `npm run db:seed` loads the fixtures instead.
 
+## Leagues
+
+Site admins create leagues (**Leagues -> Create league**); the creator becomes the commissioner and names their own team.
+A league's `season` is the ESPN season year (2027 = 2026-27).
+
+- **Invites:** the commissioner makes single-use league invite links (7 days) on the league's **Invite** page. A new person
+  sets a username/password and their team name + abbreviation on the link; someone already logged in just names a new team
+  ("Join {league} as a new team"). Team names (2-30 chars) and abbreviations (2-4 letters) are unique per league,
+  case-insensitively, and each user has one team per league. Site-level invites (Admin page) still create a plain account.
+- **House rules** (all in the league settings, validated by `src/lib/fantasy/settings.ts`): H2H points, scoring = ESPN
+  defaults plus a +4 team-win bonus (the setting exists; the bonus is applied in the scoring milestone), no lineups,
+  max roster = `min(50, floor(520 / teams))`, snake rounds = `min(floor(200 / teams), maxRoster)` then waves of 2,
+  2 free-agent adds per team per day. The league page shows the computed roster/snake/wave numbers live; the roster, snake and
+  wave fields are locked once the league leaves `setup` (scoring stays editable). Everyone in a league sees a plain-language rules summary.
+- **Schedule:** the commissioner generates it from the league's **Schedule** page while the league is in setup. Weekly Mon-Sun (ET) periods
+  start on opening night, an All-Star break gap (4+ days without NBA games) is merged into the neighbouring weeks, the last
+  playoff-rounds x round-length periods are reserved for the playoffs (their matchups are created later), and regular-season
+  matchups are a round robin (byes for odd team counts). Season start/end default to the first/last regular-season game in
+  `nba_games`; if the NBA schedule isn't loaded for the season, enter the dates in settings and the generator uses those
+  (without the All-Star merge). Adding or removing a team clears the schedule.
+- **Access:** only teams' owners and site admins can see a league; only the commissioner edits.
+- `npm run db:seed` also creates a **Demo League** (admin plus `demo1`-`demo3`, password `password123`) for local development.
+
+## Draft
+
+The commissioner starts the draft from the league's **Draft** tab (it needs a generated schedule that includes every team).
+Starting it locks the roster/snake/wave settings, shuffles the order with a crypto RNG and moves the league to `drafting`.
+
+- **Snake phase:** `snakeRounds = min(floor(200 / teams), maxRoster)` rounds; the team on the clock is shown with how long it has been
+  waiting. Pushes: "You're on the clock" to the next picker and "You're 2 picks away" to the team after next.
+- **Wave phase:** the remaining rounds are drafted in simultaneous waves of 2 picks per team (the last wave is 1 pick when the remainder is odd).
+  A wave ends once every team has used its quota, then the next one opens and everyone gets a push. First come, first served.
+- **No timer, no autopick.** The commissioner can **pick for a team** that has the turn / wave quota and **undo the last pick** (steps back through
+  waves, into the snake phase, or out of a completed draft). Undoing a finished draft is refused once rosters have changed.
+- **Queue:** every team can build a private queue before and during the draft (reorder with the arrows). Drafted players leave every queue.
+- **Completion:** when every team has `maxRoster` players the league becomes `in_season`, the board turns into a recap and team pages show rosters
+  (`roster_entries`, one active roster per player per league).
+- **Concurrency:** every pick runs in one transaction with `SELECT ... FOR UPDATE` on the draft row, so two clicks on the same player produce one pick and one
+  "just drafted" error. The draft state is always recomputed from the picks (`src/lib/draft/engine.ts`).
+- The board polls every ~10s with SWR (and refreshes right after your own actions).
+- **Keepers: deferred.** There are no keepers in the first season; the `keepers` setting exists but nothing uses it yet.
+
+## Notifications and PWA
+
+The app is an installable PWA (`src/app/manifest.ts`, icons in `public/icons`, regenerate with `node scripts/generate-icons.mjs`) with a service worker
+(`public/sw.js`) that only handles Web Push. In-app notifications (the header bell, **/notifications**) always work; push needs VAPID keys.
+
+1. Generate keys once: `npm run vapid:generate` (prints to the console only).
+2. **Vercel:** Project -> Settings -> Environment Variables, add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (e.g. `mailto:you@example.com`)
+   for Production, then redeploy. **Local:** the same three lines in `.env.local`. Never commit them; keep the same pair forever (changing it
+   invalidates every device's subscription).
+3. Each person opens **Settings -> Notifications** (`/settings/notifications`), taps **Enable notifications on this device**, then **Send test notification**.
+   They can switch each type (on the clock, wave open, 2 picks away, draft events) on/off for push and in-app separately.
+4. **iPhone/iPad:** push only works for the installed app. Open the site in Safari -> Share -> **Add to Home Screen**, open it from the new icon, then
+   enable notifications there (the settings page shows this guidance when it detects iOS Safari outside the Home Screen app).
+
+Push is sent after the database transaction commits, never throws into the request, and subscriptions that return 404/410 (or fail repeatedly) are deleted.
+Tests inject a fake sender (`setPushSender`), so no network or keys are needed.
+
 ## Project layout
 
 ```
 src/app/(auth)/{login,invite/[token],reset/[token]}   public auth pages
 src/app/(app)/{page.tsx,admin}                         signed-in pages (layout enforces requireUser)
 src/app/(app)/{players,players/[id],nba/scoreboard}    Players table, player card, NBA scoreboard
+src/app/(app)/leagues/...                              leagues list/new, league home, settings, schedule, teams, invite
+src/lib/leagues/                                       league service (create, settings, invites, teams, schedule)
+src/lib/draft/                                         draft engine (pure math), service (start/pick/undo/queue), board read models
+src/lib/notifications/                                 notify() (in-app + Web Push), preferences, subscriptions
 src/app/api/cron/{daily,live}/route.ts                 cron endpoints (use verifyCronRequest)
 src/lib/nba/                                           ESPN adapter, normalizers, sync jobs, ET date util, queries
-src/lib/fantasy/                                       default points scoring, projections
+src/lib/fantasy/                                       points scoring, projections, league settings, roster sizing, schedule generator
 src/lib/auth/                                          tokens, argon2, session cookie, service (DB logic), zod schemas
 src/lib/cron.ts                                        verifyCronRequest
 src/db/{schema,index,migrate,seed}.ts   drizzle/       schema, client (PGlite or Neon), migrations

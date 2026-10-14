@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { FormState } from "@/lib/auth/validation";
 import { redeemInviteAction } from "./actions";
 
-export function InviteForm({ token }: { token: string }) {
+export function InviteForm({ token, leagueName }: { token: string; leagueName?: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     redeemInviteAction.bind(null, token),
     {},
@@ -17,7 +17,11 @@ export function InviteForm({ token }: { token: string }) {
     <Card>
       <CardHeader>
         <CardTitle>You&apos;re invited</CardTitle>
-        <CardDescription>Pick a username and password to create your account.</CardDescription>
+        <CardDescription>
+          {leagueName
+            ? `Create your account and name your team to join ${leagueName}.`
+            : "Pick a username and password to create your account."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={action} className="grid gap-4">
@@ -47,6 +51,27 @@ export function InviteForm({ token }: { token: string }) {
             errors={errs?.confirmPassword}
             required
           />
+          {leagueName && (
+            <fieldset className="grid gap-4 rounded-lg border p-3">
+              <legend className="px-1 text-sm font-medium">Your team in {leagueName}</legend>
+              <FormField
+                name="teamName"
+                label="Team name"
+                defaultValue={state.values?.teamName}
+                errors={errs?.teamName}
+                required
+              />
+              <FormField
+                name="teamAbbrev"
+                label="Team abbreviation (2-4 letters)"
+                defaultValue={state.values?.teamAbbrev}
+                errors={errs?.teamAbbrev}
+                maxLength={4}
+                autoCapitalize="characters"
+                required
+              />
+            </fieldset>
+          )}
           <Button type="submit" disabled={pending}>
             {pending ? "Creating account..." : "Create account"}
           </Button>
