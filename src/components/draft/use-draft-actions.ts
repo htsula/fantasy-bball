@@ -18,7 +18,8 @@ export function useDraftActions(leagueId: string, refreshBoard: () => Promise<un
         if (result.ok) {
           if (success) toast.success(success);
         } else {
-          toast.error(result.error);
+          // player_taken: the list the click came from was stale; it is refreshed right below.
+          toast.error(result.code === "player_taken" ? "That player was just taken. The list has been refreshed, pick someone else." : result.error);
         }
       } catch {
         toast.error("Something went wrong. Please try again.");

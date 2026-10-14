@@ -1,7 +1,8 @@
 /**
  * Dev-only seed data. Refuses to run against a real Postgres database.
  * Also loads the saved ESPN fixtures (teams, one roster, a final game with its box score,
- * injuries, news) so the NBA pages have data offline. Also creates a Demo League with 4 teams and a schedule.
+ * injuries, news) so the NBA pages have data offline, plus a 10-team mid-season Demo League with invented
+ * players (see src/lib/leagues/seed-demo.ts). Log in as admin / demo1..demo9, password "password123" (local only).
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -29,7 +30,11 @@ async function main() {
   }
   console.log("Seeded NBA fixtures:", await seedNbaFixtures(db));
   const demo = await seedDemoLeague(db);
-  console.log(demo.created ? "Seeded Demo League (users demo1-demo3, password password123)." : "Demo League already present.");
+  console.log(
+    demo.created
+      ? "Seeded Demo League (10 teams, mid-season). Log in as admin or demo1..demo9 with password \"password123\"."
+      : "Demo League already present.",
+  );
   process.exit(0);
 }
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { getCurrentUser } from "@/lib/auth/session";
-import { listDraftablePlayers } from "@/lib/draft/board";
+import { DEFAULT_DRAFT_SORT, DRAFT_SORT_KEYS, listDraftablePlayers } from "@/lib/draft/board";
 import { LeagueError, getLeagueView } from "@/lib/leagues/service";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,8 @@ const query = z.object({
   pos: z.string().max(3).optional().catch(undefined),
   team: z.coerce.number().int().positive().optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(100).catch(1),
+  sort: z.enum(DRAFT_SORT_KEYS).catch(DEFAULT_DRAFT_SORT),
+  dir: z.enum(["asc", "desc"]).optional().catch(undefined),
   size: z.coerce.number().int().min(1).max(50).catch(PAGE_SIZE),
 });
 
@@ -33,6 +35,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ leagueId
     q: p.q,
     pos: p.pos,
     team: p.team,
+    sort: p.sort,
+    dir: p.dir,
     limit: p.size,
     offset: (p.page - 1) * p.size,
   });

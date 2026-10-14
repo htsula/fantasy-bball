@@ -17,9 +17,14 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed-nba": "tsx scripts/seed-nba.ts",
+    "db:seed-e2e-matchups": "tsx scripts/seed-e2e-matchups.ts",
+    "db:seed-e2e-trades": "tsx scripts/seed-e2e-trades.ts",
+    "db:seed-e2e-playoffs": "tsx scripts/seed-e2e-playoffs.ts",
+    "db:seed-e2e-social": "tsx scripts/seed-e2e-social.ts",
     "sync:daily": "tsx scripts/sync-daily.ts",
     "create-admin": "tsx scripts/create-admin.ts",
-    "vapid:generate": "node scripts/generate-vapid.mjs"
+    "vapid:generate": "node scripts/generate-vapid.mjs",
+    "e2e:mobile": "playwright test -c playwright.mobile.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

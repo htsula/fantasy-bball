@@ -32,7 +32,7 @@ export type TradeReviewMode = (typeof TRADE_REVIEW_MODES)[number];
 export const PLAYOFF_TEAM_OPTIONS = [2, 4, 6, 8] as const;
 
 /** Fields that are frozen once the league leaves "setup" (the draft depends on them). */
-export const DRAFT_LOCKED_FIELDS = ["rosterPool", "rosterCap", "snakeTarget", "waveSize"] as const;
+export const DRAFT_LOCKED_FIELDS = ["rosterPool", "rosterCap", "snakeTarget", "waveSize", "keepers"] as const;
 
 const dateField = z
   .string()
@@ -72,6 +72,8 @@ export const leagueSettingsSchema = z
       .refine((n) => n === 1 || n === 2, "Choose 1 or 2")
       .default(1),
     keepers: int(0, 20).default(0),
+    /** Last ET day owners may change their keepers (the commissioner can always edit). null = no deadline. */
+    keeperDeadline: dateField.default(null),
   })
   .refine((s) => !s.regularSeasonStart || !s.regularSeasonEnd || s.regularSeasonEnd >= s.regularSeasonStart, {
     message: "Season end must be on or after the start",

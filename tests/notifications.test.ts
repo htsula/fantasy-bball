@@ -107,6 +107,20 @@ describe("notify", () => {
     expect((await getPrefs(db, a)).draft_on_clock).toEqual({ push: false, inApp: true });
   });
 
+  it("sends league_transactions in-app only by default, until the user turns push on", async () => {
+    await saveSubscription(db, a, sub("a1"));
+    const sender = vi.fn<PushSender>().mockResolvedValue();
+    const move = { ...input([a]), type: "league_transactions" as const };
+    await notify(db, move, { sender });
+    expect(sender).not.toHaveBeenCalled();
+    expect(await unreadCount(db, a)).toBe(1);
+    expect((await getPrefs(db, a)).league_transactions).toEqual({ push: false, inApp: true });
+    expect((await getPrefs(db, a)).roster_auto_drop).toEqual({ push: true, inApp: true });
+    await setPref(db, a, "league_transactions", { push: true });
+    await notify(db, move, { sender });
+    expect(sender).toHaveBeenCalledTimes(1);
+  });
+
   it("deletes a subscription on 410 or 404 and keeps the others", async () => {
     await saveSubscription(db, a, sub("gone"));
     await saveSubscription(db, a, sub("missing"));

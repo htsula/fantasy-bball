@@ -21,14 +21,24 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PlayerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireUser();
   const { id } = await params;
+  const rawLog = (await searchParams).logSeason;
+  const logSeasonParam = Number(Array.isArray(rawLog) ? rawLog[0] : rawLog);
   const playerId = Number(id);
   if (!Number.isInteger(playerId) || playerId <= 0) notFound();
-  const card = await getPlayerCard(db, playerId);
+  const card = await getPlayerCard(db, playerId, new Date(), {
+    logSeason: Number.isInteger(logSeasonParam) ? logSeasonParam : undefined,
+  });
   if (!card) notFound();
-  const { player, team, injury, averages, gameLog, schedule, news, projection, remaining } = card;
+  const { player, team, injury, averages, bySeason, logSeason, logSeasons, gameLog, schedule, news, projection, remaining } = card;
 
   const bio = [
     player.jersey ? `#${player.jersey}` : null,
@@ -112,9 +122,59 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
 
+      <Card data-testid="fantasy-by-season">
+        <CardHeader>
+          <CardTitle>Fantasy by season</CardTitle>
+          <CardDescription>
+            Regular season, default scoring. FP and FP/G include the +4 team-win bonus (approximated: games he was on the
+            box score and not out injured, in a team win); the bonus column shows how many points that was.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Season</TableHead>
+                <TableHead className="text-right">GP</TableHead>
+                <TableHead className="text-right">MIN</TableHead>
+                <TableHead className="text-right">FP/G</TableHead>
+                <TableHead className="text-right">FP</TableHead>
+                <TableHead className="text-right">Win bonus</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bySeason.map((r) => (
+                <TableRow key={r.season} data-testid="season-row" data-season={r.season}>
+                  <TableCell className="font-medium">{seasonLabel(r.season)}</TableCell>
+                  <TableCell className="text-right">{r.gp}</TableCell>
+                  <TableCell className="text-right">{fmtNum(r.minAvg)}</TableCell>
+                  <TableCell className="text-right">{fmtNum(r.fpAvg)}</TableCell>
+                  <TableCell className="text-right font-medium">{fmtNum(r.totalFp, 0)}</TableCell>
+                  <TableCell className="text-right">{fmtNum(r.bonusFp, 0)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle>Game log</CardTitle>
+          <CardTitle>Game log{logSeason ? ` ${seasonLabel(logSeason)}` : ""}</CardTitle>
+          {logSeasons.length > 1 && (
+            <div className="flex gap-2" data-testid="log-season-switch">
+              {logSeasons.map((sn) => (
+                <Link
+                  key={sn}
+                  href={`/players/${player.id}?logSeason=${sn}`}
+                  aria-current={sn === logSeason ? "true" : undefined}
+                  className={buttonVariants({ variant: sn === logSeason ? "default" : "outline", size: "sm" })}
+                >
+                  {seasonLabel(sn)}
+                </Link>
+              ))}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>

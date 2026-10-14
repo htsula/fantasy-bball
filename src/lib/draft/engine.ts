@@ -82,6 +82,11 @@ export function isWaveComplete(
   return teamPickCounts.every((c) => c >= waveTarget(cfg, wave));
 }
 
+/** Picks plus keepers per team (what counts toward the roster target). */
+export function effectiveCounts(teamPickCounts: readonly number[], keeperCounts?: readonly number[]): number[] {
+  return teamPickCounts.map((c, i) => c + (keeperCounts?.[i] ?? 0));
+}
+
 export type DerivedState =
   | { status: "snake"; currentPick: number }
   | { status: "waves"; currentPick: number; wave: number }
@@ -91,12 +96,22 @@ export type DerivedState =
  * Where the draft stands, given how many picks each team has made. Valid because picks in
  * every phase are bounded (snake by turn order, waves by quota), so counts alone identify the
  * phase, and the wave is one past the last wave that every team has finished.
+ *
+ * Keepers (optional, one count per team) are already on the roster, so they count toward a team's
+ * roster total but NOT toward the snake: the snake phase is the same for everyone and is judged
+ * on picks made, while wave progress and completion use picks + keepers. A team with k keepers
+ * therefore owes k fewer wave picks (it may owe none for a whole wave), and the draft is complete
+ * when every team has picks + keepers >= totalRounds (i.e. drafted maxRoster - keepers players).
  */
-export function deriveState(cfg: DraftConfig, teamPickCounts: readonly number[]): DerivedState {
+export function deriveState(
+  cfg: DraftConfig,
+  teamPickCounts: readonly number[],
+  keeperCounts?: readonly number[],
+): DerivedState {
   const made = teamPickCounts.reduce((a, b) => a + b, 0);
   const snakeTotal = totalSnakePicks(cfg);
   if (made < snakeTotal) return { status: "snake", currentPick: made + 1 };
-  const minPicks = Math.min(...teamPickCounts);
+  const minPicks = Math.min(...effectiveCounts(teamPickCounts, keeperCounts));
   if (minPicks >= cfg.totalRounds) return { status: "complete", currentPick: snakeTotal + 1 };
   const wave = Math.floor((minPicks - cfg.snakeRounds) / cfg.waveSize) + 1;
   return { status: "waves", currentPick: snakeTotal + 1, wave };

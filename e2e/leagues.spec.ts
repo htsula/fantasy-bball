@@ -21,8 +21,9 @@ test("admin creates a league, invites a new user with a team, generates the sche
 
   // Create a league invite link.
   await page.getByRole("link", { name: "Invite" }).click();
-  await page.getByRole("button", { name: "Create league invite link" }).click();
-  const link = page.getByLabel("Generated link");
+  await expect(page.getByText("anyone with the link can join until the draft starts")).toBeVisible();
+  await page.getByRole("button", { name: "Create invite link" }).click();
+  const link = page.getByLabel("Invite link");
   await expect(link).toHaveValue(/\/invite\//);
   const inviteUrl = await link.inputValue();
 
@@ -47,7 +48,29 @@ test("admin creates a league, invites a new user with a team, generates the sche
   await expect(fp.getByRole("link", { name: "Invite" })).toHaveCount(0); // not the commissioner
   await expect(fp.getByRole("link", { name: "Rules" })).toBeVisible();
 
-  // Both teams are visible to the commissioner; the owner usernames are shown.
+  // The SAME link is reusable: a second new user joins with it too.
+  const friend2 = await browser.newContext();
+  const fp2 = await friend2.newPage();
+  await fp2.goto(inviteUrl);
+  await fp2.getByLabel("Username").fill("leaguer2");
+  await fp2.getByLabel("Password (min 8 characters)").fill("friend-password-2");
+  await fp2.getByLabel("Confirm password").fill("friend-password-2");
+  await fp2.getByLabel("Team name").fill("Bench Mob");
+  await fp2.getByLabel("Team abbreviation (2-4 letters)").fill("BMB");
+  await fp2.getByRole("button", { name: "Create account" }).click();
+  await expect(fp2.getByRole("heading", { name: "E2E League" })).toBeVisible();
+  await expect(fp2.getByTestId("team-row")).toHaveCount(3);
+
+  // The commissioner sees both joiners under the link, and removes one from the invite page.
+  await page.reload();
+  await expect(page.getByTestId("invite-member")).toHaveCount(2);
+  await expect(page.getByText("2 joined, no limit.")).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByTestId("invite-member").filter({ hasText: "Bench Mob" }).getByRole("button", { name: "Remove team" }).click();
+  await expect(page.getByTestId("invite-member")).toHaveCount(1);
+  await friend2.close();
+
+  // Both remaining teams are visible to the commissioner; the owner usernames are shown.
   await page.getByRole("link", { name: "Overview" }).click();
   await expect(page.getByTestId("team-row")).toHaveCount(2);
   await expect(page.getByRole("row", { name: /Rookies.*leaguer/ })).toBeVisible();
@@ -75,7 +98,7 @@ test("admin creates a league, invites a new user with a team, generates the sche
   await page.getByRole("button", { name: "Generate schedule" }).click();
   await expect(page.getByText("Schedule generated")).toBeVisible();
   await expect(page.getByText("Week 1").first()).toBeVisible();
-  await expect(page.getByText("Playoffs - round 1")).toBeVisible();
+  await expect(page.getByText("Playoffs: Final")).toBeVisible();
   await expect(page.getByTestId("matchup").first()).toContainText(/Commish Crew vs Rookies|Rookies vs Commish Crew/);
   expect(await page.getByTestId("matchup").count()).toBe(8);
   await expect(page.locator('[data-testid="matchup"][data-mine="true"]')).toHaveCount(8);
@@ -93,8 +116,8 @@ test("admin creates a league, invites a new user with a team, generates the sche
   await page.getByRole("button", { name: "Create league" }).click();
   await expect(page.getByRole("heading", { name: "Second League" })).toBeVisible();
   await page.getByRole("link", { name: "Invite" }).click();
-  await page.getByRole("button", { name: "Create league invite link" }).click();
-  const secondUrl = await page.getByLabel("Generated link").inputValue();
+  await page.getByRole("button", { name: "Create invite link" }).click();
+  const secondUrl = await page.getByLabel("Invite link").inputValue();
   await fp.goto(secondUrl);
   await expect(fp.getByText("Join Second League as a new team")).toBeVisible();
   await fp.getByLabel("Team name").fill("Rookies Two");
@@ -104,6 +127,17 @@ test("admin creates a league, invites a new user with a team, generates the sche
   await fp.goto("/");
   await expect(fp.getByRole("link", { name: "E2E League" })).toBeVisible();
   await expect(fp.getByRole("link", { name: "Second League" })).toBeVisible();
+
+  // Revoking the link shows a clear message to anyone who opens it afterwards.
+  await page.reload();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Revoke" }).click();
+  await expect(page.getByText("Revoked").first()).toBeVisible();
+  const late = await browser.newContext();
+  const lp = await late.newPage();
+  await lp.goto(secondUrl);
+  await expect(lp.getByText("This invite link was turned off by the commissioner")).toBeVisible();
+  await late.close();
 
   await friend.close();
 });

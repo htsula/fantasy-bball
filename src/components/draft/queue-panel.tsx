@@ -65,7 +65,7 @@ export function QueuePanel({
                     <InjuryBadge status={p.injuryStatus} detail={p.injuryDetail} />
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {p.positions.join("/") || "-"} · {p.nbaTeam ?? "-"} · Proj {fmtNum(p.proj)}
+                    {p.positions.join("/") || "-"} · {p.nbaTeam ?? "-"} · Last FP {fmtNum(p.lastFp, 0)} ({fmtNum(p.lastAvg)}/G) · Proj {fmtNum(p.proj)}
                   </div>
                 </div>
                 <Button variant="ghost" size="icon-sm" aria-label={`Move ${p.name} up`} disabled={pending || i === 0} onClick={() => move(i, -1)}>

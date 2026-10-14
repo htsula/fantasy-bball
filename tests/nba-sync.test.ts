@@ -246,11 +246,11 @@ describe("syncLive window logic", () => {
     expect(await total(syncRuns)).toBe(0);
   });
 
-  it("is a no-op when the next tip-off is more than an hour away", async () => {
+  it("is a no-op when the next tip-off is more than 90 minutes away", async () => {
     await insertScheduledGame(900001, TIP);
-    const res = await syncLive(db, noNetwork(), { now: () => new Date(TIP.getTime() - 61 * 60_000) });
+    const res = await syncLive(db, noNetwork(), { now: () => new Date(TIP.getTime() - 91 * 60_000) });
     expect(res.skipped).toBeTruthy();
-    expect((await liveWindow(db, new Date(TIP.getTime() - 59 * 60_000))).active).toBe(true);
+    expect((await liveWindow(db, new Date(TIP.getTime() - 89 * 60_000))).active).toBe(true);
   });
 
   it("is a no-op for a long-finished game with settled stats", async () => {
@@ -260,7 +260,7 @@ describe("syncLive window logic", () => {
     expect(res.skipped).toBeTruthy();
   });
 
-  it("runs from an hour before tip-off through the game and settles after the final", async () => {
+  it("runs from 90 minutes before tip-off through the game and settles after the final", async () => {
     await insertScheduledGame(900001, TIP);
     let state: "pre" | "in" | "post" = "pre";
     const { client, calls } = spyClient(

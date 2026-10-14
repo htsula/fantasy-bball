@@ -37,6 +37,9 @@ function LeagueList({ items, empty }: { items: LeagueSummary[]; empty?: string }
 export default async function LeaguesPage() {
   const user = await requireUser();
   const { mine, others } = await listLeagues(db, user);
+  // Past seasons are the ones a newer season was started from; everything else is current.
+  const current = mine.filter((s) => !s.rolledOver);
+  const past = mine.filter((s) => s.rolledOver).sort((a, b) => b.league.season - a.league.season);
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -50,14 +53,20 @@ export default async function LeaguesPage() {
       <section className="grid gap-3">
         <h2 className="text-lg font-semibold">My leagues</h2>
         <LeagueList
-          items={mine}
+          items={current}
           empty={
             user.isSiteAdmin
               ? "You're not in any leagues yet. Create one to get started."
-              : "You're not in any leagues yet. Ask your commissioner for an invite link."
+              : "You're not in any leagues yet. Ask your commissioner for an invite link and open it on this device to join."
           }
         />
       </section>
+      {past.length > 0 && (
+        <section className="grid gap-3" data-testid="past-seasons">
+          <h2 className="text-lg font-semibold">Past seasons</h2>
+          <LeagueList items={past} />
+        </section>
+      )}
       {others.length > 0 && (
         <section className="grid gap-3">
           <h2 className="text-lg font-semibold">All other leagues (admin)</h2>

@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { invites, syncRuns, users } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ const fmt = (d: Date) => d.toLocaleString("en-US", { dateStyle: "medium", timeSt
 export default async function AdminPage() {
   await requireAdmin();
   const [inviteRows, userRows, ...lastRuns] = await Promise.all([
-    db.select().from(invites).orderBy(desc(invites.createdAt)).limit(50),
+    db.select().from(invites).where(isNull(invites.leagueId)).orderBy(desc(invites.createdAt)).limit(50),
     db.select().from(users).orderBy(users.createdAt),
     ...SYNC_JOBS.map((job) =>
       db.select().from(syncRuns).where(eq(syncRuns.job, job)).orderBy(desc(syncRuns.startedAt)).limit(1),
@@ -118,14 +118,14 @@ export default async function AdminPage() {
                 </TableRow>
               )}
               {inviteRows.map((inv) => {
-                const status = inv.usedAt ? "Used" : inv.expiresAt <= now ? "Expired" : "Pending";
+                const status = inv.usedAt ? "Used" : inv.expiresAt && inv.expiresAt <= now ? "Expired" : "Pending";
                 return (
                   <TableRow key={inv.id}>
                     <TableCell>{fmt(inv.createdAt)}</TableCell>
                     <TableCell>
                       <Badge variant={status === "Pending" ? "default" : "secondary"}>{status}</Badge>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{fmt(inv.expiresAt)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{inv.expiresAt ? fmt(inv.expiresAt) : "-"}</TableCell>
                     <TableCell>{inv.usedBy ? (usernameById.get(inv.usedBy) ?? "-") : "-"}</TableCell>
                   </TableRow>
                 );

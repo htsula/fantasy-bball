@@ -77,6 +77,30 @@ export function PreDraft({
         </CardContent>
       </Card>
 
+      {f.keepers > 0 && (
+        <Card data-testid="keepers-card">
+          <CardHeader>
+            <CardTitle>Keepers</CardTitle>
+            <CardDescription>
+              Up to {f.keepers} per team from last season&apos;s roster. Keepers join your roster when the draft starts, so you draft that
+              many fewer players.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 text-sm">
+            {board.me.keepers.length > 0 ? (
+              <p>
+                Your keepers: <strong>{board.me.keepers.map((p) => p.name).join(", ")}</strong>
+              </p>
+            ) : (
+              <p className="text-muted-foreground">You haven&apos;t chosen any keepers.</p>
+            )}
+            <Link href={`${base}/keepers`} className="w-fit font-medium underline underline-offset-4">
+              Choose keepers
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Teams</CardTitle>

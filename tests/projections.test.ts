@@ -109,19 +109,69 @@ describe("loadProjections", () => {
     const map = await loadProjections(db, { now: NOW });
     const alpha = map.get(101)!;
     expect(alpha).toMatchObject({ seasonGames: 10, recentGames: 6 });
-    expect(alpha.seasonAvg).toBeCloseTo(28);
-    expect(alpha.recentAvg).toBeCloseTo(40);
-    expect(alpha.projection).toBeCloseTo(35.2);
+    // Averages include the +4 win bonus (every game was a home win for team 1).
+    expect(alpha.seasonAvg).toBeCloseTo(32);
+    expect(alpha.recentAvg).toBeCloseTo(44);
+    expect(alpha.statProjection).toBeCloseTo(35.2);
+    expect(alpha.winBonusPerGame).toBeCloseTo(4); // team win% 1.0 x 4
+    expect(alpha.projection).toBeCloseTo(39.2);
 
     const bravo = map.get(102)!;
     expect(bravo).toMatchObject({ seasonGames: 8, recentGames: 3 });
-    expect(bravo.projection).toBeCloseTo(13.75); // too few recent games: season average
+    expect(bravo.statProjection).toBeCloseTo(13.75); // too few recent games: season average
+    expect(bravo.projection).toBeCloseTo(17.75);
     expect(map.has(103)).toBe(false);
   });
 
   it("can be limited to some players", async () => {
     const map = await loadProjections(db, { now: NOW, playerIds: [102] });
     expect([...map.keys()]).toEqual([102]);
+  });
+});
+
+describe("win bonus in projections", () => {
+  it("drops the expected bonus for a player who is currently Out", async () => {
+    await applyInjuries(
+      db,
+      [{ playerId: 101, teamId: 1, status: "OUT", detail: "Knee", shortComment: "s", longComment: "l", date: NOW }],
+      NOW,
+    );
+    const alpha = (await loadProjections(db, { now: NOW })).get(101)!;
+    expect(alpha.winBonusPerGame).toBe(0);
+    expect(alpha.projection).toBeCloseTo(35.2);
+    // The SQL twin used by the Players table agrees.
+    const row = (await listPlayers(db, { now: NOW })).rows.find((r) => r.id === 101)!;
+    expect(row.proj).toBeCloseTo(35.2);
+  });
+
+  it("uses the team's win% (a day-to-day player keeps the bonus)", async () => {
+    // Team 2 (BOS) lost every game above; give Charlie some stats there and check the 0 bonus.
+    await upsertStats(db, [stat(1001, 103, 20, { teamId: 2 }), stat(1002, 103, 20, { teamId: 2 })], NOW);
+    await applyInjuries(
+      db,
+      [{ playerId: 103, teamId: 2, status: "Day-To-Day", detail: "Ankle", shortComment: "s", longComment: "l", date: NOW }],
+      NOW,
+    );
+    const charlie = (await loadProjections(db, { now: NOW })).get(103)!;
+    expect(charlie.winBonusPerGame).toBe(0); // BOS win% is 0
+    expect(charlie.seasonAvg).toBeCloseTo(20);
+    expect(charlie.projection).toBeCloseTo(20);
+  });
+
+  it("approximates historical eligibility: coach's-decision DNP earns the bonus, injury DNP does not", async () => {
+    await upsertGames(db, [game(3001, "2026-03-01T00:00:00Z", "final"), game(3002, "2026-03-02T00:00:00Z", "final")], NOW);
+    await upsertStats(
+      db,
+      [
+        stat(3001, 102, 0, { dnp: true, minutes: null, dnpReason: "DNP - Coach's Decision" }),
+        stat(3002, 102, 0, { dnp: true, minutes: null, dnpReason: "Left knee soreness" }),
+      ],
+      NOW,
+    );
+    const before = (await listPlayers(db, { now: NOW })).rows.find((r) => r.id === 102)!;
+    // Bravo: 8 played games (+4 each) plus one eligible DNP win: 8 x 10-or-20 stat points + 9 x 4.
+    expect(before.gp).toBe(8);
+    expect(before.fpTotal).toBe(fantasyPoints({ pts: 10 }) * 5 + fantasyPoints({ pts: 20 }) * 3 + 9 * 4);
   });
 });
 
@@ -142,10 +192,10 @@ describe("listPlayers", () => {
     const alpha = res.rows[0];
     expect(alpha).toMatchObject({ gp: 10, teamAbbrev: "ATL", positions: ["PG", "SG"] });
     expect(alpha.pts).toBeCloseTo(28);
-    expect(alpha.fpTotal).toBe(280);
-    expect(alpha.fpAvg).toBeCloseTo(28);
+    expect(alpha.fpTotal).toBe(320); // 280 stat points + 10 x 4 win bonus
+    expect(alpha.fpAvg).toBeCloseTo(32);
     expect(alpha.min).toBeCloseTo(30);
-    expect(alpha.proj).toBeCloseTo(35.2);
+    expect(alpha.proj).toBeCloseTo(39.2);
     // Players with no games come last with empty stats.
     expect(res.rows[2]).toMatchObject({ gp: 0, pts: null, fpTotal: null, proj: null });
   });
@@ -163,9 +213,9 @@ describe("listPlayers", () => {
     expect(await gp("15")).toBe(6);
     expect(await gp("30")).toBe(6);
     const week = (await listPlayers(db, { now: NOW, range: "7" })).rows.find((r) => r.id === 101)!;
-    expect(week.fpTotal).toBe(80);
+    expect(week.fpTotal).toBe(88);
     // Projection still uses full-season context regardless of range.
-    expect(week.proj).toBeCloseTo(35.2);
+    expect(week.proj).toBeCloseTo(39.2);
   });
 
   it("filters by position, team, injury and health, and searches by name", async () => {
@@ -220,14 +270,14 @@ describe("getPlayerCard", () => {
     expect(card.player.fullName).toBe("Alpha Guard");
     expect(card.team?.abbrev).toBe("ATL");
     expect(card.averages).toMatchObject({ gp: 10 });
-    expect(card.averages!.fpAvg).toBeCloseTo(28);
+    expect(card.averages!.fpAvg).toBeCloseTo(32);
     expect(card.gameLog).toHaveLength(11);
     expect(card.gameLog[0]).toMatchObject({ opponent: "BOS", home: true, fantasyPoints: null }); // newest = the DNP
     expect(card.gameLog[1].fantasyPoints).toBe(fantasyPoints({ pts: 40 }));
     expect(card.schedule.map((s) => s.gameId)).toEqual([2001, 2002, 2003, 2004]);
-    expect(card.projection?.projection).toBeCloseTo(35.2);
+    expect(card.projection?.projection).toBeCloseTo(39.2);
     expect(card.remaining).toEqual({ week: 2, season: 3 });
-    expect(card.projectedTotals.week).toBeCloseTo(70.4);
+    expect(card.projectedTotals.week).toBeCloseTo(78.4);
   });
 
   it("returns null for unknown players", async () => {

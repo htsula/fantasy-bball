@@ -105,7 +105,14 @@ export function SettingsForm({
           {intField("snakeTarget", "Snake picks target", true)}
           {intField("waveSize", "Picks per team per wave", true)}
           {intField("addsPerDay", "Free-agent adds per day")}
-          {intField("keepers", "Keepers per team")}
+          {intField("keepers", "Keepers per team", true)}
+          <FormField
+            name="keeperDeadline"
+            label="Keeper deadline (optional)"
+            type="date"
+            defaultValue={val("keeperDeadline", s.keeperDeadline)}
+            errors={errs?.keeperDeadline}
+          />
         </CardContent>
       </Card>
 

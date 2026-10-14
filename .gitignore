@@ -49,3 +49,6 @@ next-env.d.ts
 
 # owner-only helper scripts and secrets (never committed)
 /local/
+
+# mobile screenshot pass (npm run e2e:mobile)
+/screenshots/

@@ -1,9 +1,12 @@
-import Link from "next/link";
+import { ChatNavBadge } from "@/components/chat/chat-nav-badge";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { ScrollNav, type NavItem } from "@/components/nav/scroll-nav";
+import { chatUnreadCount } from "@/lib/chat/service";
 import { LEAGUE_STATUS_LABEL } from "@/lib/leagues/labels";
 import { loadLeagueView } from "@/lib/leagues/loaders";
 import { seasonLabel } from "@/lib/nba/format";
+import { countReceivedOffers } from "@/lib/trades/service";
+import { db } from "@/db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +18,47 @@ export default async function LeagueLayout({
   params: Promise<{ leagueId: string }>;
 }) {
   const { leagueId } = await params;
-  const { view } = await loadLeagueView(leagueId);
+  const { user, view } = await loadLeagueView(leagueId);
   const { league } = view;
   const base = `/leagues/${league.id}`;
-  const tab = buttonVariants({ variant: "ghost", size: "sm" });
+  const offers = view.myTeam ? await countReceivedOffers(db, league.id, view.myTeam.id) : 0;
+  const unreadChat = view.myTeam ? await chatUnreadCount(db, user.id, league.id) : 0;
+  const items: NavItem[] = [
+    { href: base, label: "Overview", exact: true },
+    ...(view.myTeam ? [{ href: `${base}/teams/${view.myTeam.id}`, label: "My team" }] : []),
+    { href: `${base}/players`, label: "Players" },
+    {
+      href: `${base}/trades`,
+      label: "Trades",
+      testId: "nav-trades",
+      badge:
+        offers > 0 ? (
+          <Badge className="ml-1" data-testid="nav-trades-badge" aria-label={`${offers} trade offer${offers === 1 ? "" : "s"} waiting`}>
+            {offers}
+          </Badge>
+        ) : null,
+    },
+    { href: `${base}/transactions`, label: "Transactions" },
+    { href: `${base}/activity`, label: "Activity", testId: "nav-activity" },
+    { href: `${base}/chat`, label: "Chat", testId: "nav-chat", badge: <ChatNavBadge leagueId={league.id} initialCount={unreadChat} /> },
+    { href: `${base}/draft`, label: "Draft" },
+    { href: `${base}/matchup`, label: "Matchup" },
+    { href: `${base}/scoreboard`, label: "Scoreboard" },
+    { href: `${base}/standings`, label: "Standings" },
+    { href: `${base}/schedule`, label: "Schedule" },
+    { href: `${base}/playoffs`, label: "Playoffs", testId: "nav-playoffs" },
+    ...(league.status === "setup" && view.settings.keepers > 0 && league.previousLeagueId
+      ? [{ href: `${base}/keepers`, label: "Keepers", testId: "nav-keepers" }]
+      : []),
+    { href: `${base}/history`, label: "History", testId: "nav-history" },
+    { href: `${base}/settings`, label: view.isCommissioner ? "Settings" : "Rules" },
+    ...(view.isCommissioner
+      ? [
+          { href: `${base}/invite`, label: "Invite" },
+          { href: `${base}/commissioner`, label: "Commissioner", testId: "nav-commissioner" },
+        ]
+      : []),
+  ];
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
@@ -29,25 +69,7 @@ export default async function LeagueLayout({
         <p className="text-sm text-muted-foreground">
           {seasonLabel(league.season)} season &middot; Commissioner: {view.commissionerUsername}
         </p>
-        <nav className="-mx-2 flex flex-wrap gap-1" aria-label="League">
-          <Link href={base} className={tab}>
-            Overview
-          </Link>
-          <Link href={`${base}/draft`} className={tab}>
-            Draft
-          </Link>
-          <Link href={`${base}/schedule`} className={tab}>
-            Schedule
-          </Link>
-          <Link href={`${base}/settings`} className={tab}>
-            {view.isCommissioner ? "Settings" : "Rules"}
-          </Link>
-          {view.isCommissioner && (
-            <Link href={`${base}/invite`} className={tab}>
-              Invite
-            </Link>
-          )}
-        </nav>
+        <ScrollNav label="League" items={items} />
       </div>
       {children}
     </div>

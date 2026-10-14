@@ -20,7 +20,9 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       <Card>
         <CardHeader>
           <CardTitle>League closed</CardTitle>
-          <CardDescription>{info.league.name} is no longer accepting new teams.</CardDescription>
+          <CardDescription>
+            This league has already started its draft. {info.league.name} is no longer accepting new teams.
+          </CardDescription>
         </CardHeader>
       </Card>
     );

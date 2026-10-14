@@ -1,7 +1,41 @@
-/* Service worker: Web Push only (no offline caching). */
+/*
+ * Service worker: Web Push plus a tiny offline fallback. Only the static offline page is cached: pages and API
+ * responses always come from the network, because stale fantasy data is worse than an "offline" notice.
+ * Bump VERSION to force clients to re-install; skipWaiting + clients.claim make updates apply immediately.
+ */
+const VERSION = "v2";
+const CACHE = "fantasy-hoops-offline-" + VERSION;
+const OFFLINE_URL = "/offline.html";
 
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => cache.add(new Request(OFFLINE_URL, { cache: "reload" })))
+      .catch(() => undefined)
+      .then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("fantasy-hoops-offline-") && k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+// Page navigations: network as usual; if the network is unreachable, show the offline page.
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode !== "navigate") return;
+  event.respondWith(
+    fetch(event.request).catch(async () => {
+      const cached = await caches.match(OFFLINE_URL);
+      return cached || new Response("You're offline.", { status: 503, headers: { "Content-Type": "text/plain" } });
+    }),
+  );
+});
 
 self.addEventListener("push", (event) => {
   let data = {};

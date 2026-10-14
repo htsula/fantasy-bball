@@ -15,6 +15,14 @@ export function snakeRounds(teams: number, settings: SizeSettings): number {
   return Math.min(Math.floor(settings.snakeTarget / teams), maxRoster(teams, settings));
 }
 
+/**
+ * Most keepers a team may hold: the roster space left after the snake rounds (the snake phase is
+ * the same for everyone, so keepers can only displace WAVE picks).
+ */
+export function keepersRoom(teams: number, settings: SizeSettings): number {
+  return Math.max(0, maxRoster(teams, settings) - snakeRounds(teams, settings));
+}
+
 export type WavePlan = {
   /** Rounds left after the snake phase (each team makes this many wave picks). */
   remainingRounds: number;

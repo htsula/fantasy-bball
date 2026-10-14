@@ -55,6 +55,7 @@ export function CommissionerControls({
                 leagueId={board.leagueId}
                 nbaTeams={nbaTeams}
                 compact
+                takenIds={new Set(draft.picks.map((p) => p.player.id))}
                 pageSize={5}
                 refreshMs={0}
                 actions={(p) => (

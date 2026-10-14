@@ -126,5 +126,46 @@
   }
   html {
     @apply font-sans;
+    color-scheme: light;
+  }
+  /* Tell the browser the page is dark so native controls (the open <select> list,
+     date pickers, scrollbars) render dark instead of white-on-white. */
+  html.dark {
+    color-scheme: dark;
+  }
+  /* Option lists are drawn by the browser; give them explicit theme colors too. */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+}
+/* Installed (standalone) PWA with viewport-fit=cover: keep content clear of the notch / home indicator / rounded corners. */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Sideways-scrolling nav rows: no scrollbar, momentum scrolling. */
+.scroll-nav {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sticky first column for wide tables that scroll sideways (opt in with data-sticky-first on the <table>). */
+table[data-sticky-first] :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--card);
+}
+
+/* A bare `grid` has one auto-sized column that grows to its widest child (e.g. a wide table), pushing the page
+   sideways on phones. Make the single column shrinkable; explicit grid-cols-* utilities still win. */
+@layer base {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

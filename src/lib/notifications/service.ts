@@ -1,10 +1,11 @@
 /** In-app notifications + Web Push fan-out. `notify` never throws into the caller. */
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { log } from "@/lib/log";
 import { notificationPrefs, notifications, pushSubscriptions, type AppNotification } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { z } from "zod";
 import { getPushSender, type PushSender } from "./push";
-import { NOTIFICATION_TYPES, isNotificationType, type NotificationType, type NotifyInput } from "./types";
+import { NOTIFICATION_DEFAULTS, NOTIFICATION_TYPES, isNotificationType, type NotificationType, type NotifyInput } from "./types";
 
 export * from "./types";
 
@@ -17,7 +18,7 @@ type PrefMap = Record<NotificationType, { push: boolean; inApp: boolean }>;
 
 export async function getPrefs(db: Db, userId: string): Promise<PrefMap> {
   const rows = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, userId));
-  const out = Object.fromEntries(NOTIFICATION_TYPES.map((t) => [t, { push: true, inApp: true }])) as PrefMap;
+  const out = Object.fromEntries(NOTIFICATION_TYPES.map((t) => [t, { ...NOTIFICATION_DEFAULTS[t] }])) as PrefMap;
   for (const r of rows) if (isNotificationType(r.type)) out[r.type] = { push: r.push, inApp: r.inApp };
   return out;
 }
@@ -116,8 +117,9 @@ export async function notify(db: Db, input: NotifyInput, opts: { sender?: PushSe
             .from(notificationPrefs)
             .where(and(inArray(notificationPrefs.userId, userIds), eq(notificationPrefs.type, input.type)));
     const prefs = new Map(prefRows.map((p) => [p.userId, p]));
-    const inApp = userIds.filter((u) => prefs.get(u)?.inApp !== false);
-    const push = userIds.filter((u) => prefs.get(u)?.push !== false);
+    const defaults = input.type === "test" ? { push: true, inApp: true } : NOTIFICATION_DEFAULTS[input.type];
+    const inApp = userIds.filter((u) => (prefs.get(u)?.inApp ?? defaults.inApp) !== false);
+    const push = input.skipPush ? [] : userIds.filter((u) => (prefs.get(u)?.push ?? defaults.push) !== false);
 
     if (inApp.length) {
       await db.insert(notifications).values(
@@ -135,10 +137,10 @@ export async function notify(db: Db, input: NotifyInput, opts: { sender?: PushSe
     const sender = opts.sender === undefined ? getPushSender() : opts.sender;
     if (sender && push.length) {
       const payload = JSON.stringify({ title: input.title, body: input.body, url: input.url, tag: input.type });
-      await pushToUsers(db, push, payload, sender).catch((err) => console.error("[notify] push failed", err));
+      await pushToUsers(db, push, payload, sender).catch((err) => log.error("push.send_failed", { type: input.type }, err));
     }
   } catch (err) {
-    console.error("[notify] failed", err);
+    log.error("notify.failed", { type: input.type }, err);
   }
 }
 
@@ -164,7 +166,7 @@ export async function sendTestNotification(
     const delivered = await pushToUsers(db, [userId], payload, sender);
     return delivered > 0 ? { ok: true, delivered } : { ok: false, reason: "failed" };
   } catch (err) {
-    console.error("[notify] test push failed", err);
+    log.error("push.test_failed", {}, err);
     return { ok: false, reason: "failed" };
   }
 }

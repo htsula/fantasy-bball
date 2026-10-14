@@ -19,8 +19,8 @@ export default async function HomePage() {
         {mine.length === 0 ? (
           <p className="text-muted-foreground">
             {user.isSiteAdmin
-              ? "You're not in any leagues yet."
-              : "You're not in any leagues yet. Ask your commissioner for an invite link."}
+              ? "You're not in any leagues yet. Create one, then share its invite link with your friends."
+              : "You're not in any leagues yet. Ask your commissioner for an invite link and open it on this device to join."}
           </p>
         ) : (
           <ul className="grid gap-2">

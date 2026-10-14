@@ -6,7 +6,7 @@ const PUBLIC_PREFIXES = ["/login", "/invite/", "/reset/", "/api/cron/"];
 /**
  * Optimistic gate: only checks that a session cookie exists. Real validation
  * happens in requireUser()/requireAdmin(), which hit the DB.
- * For signed-in requests it also re-issues the cookie to keep its 30-day expiry sliding
+ * For signed-in requests it also re-issues the cookie to keep its 400-day expiry sliding
  * (the DB expiry is extended in validateSession).
  */
 export function middleware(req: NextRequest) {

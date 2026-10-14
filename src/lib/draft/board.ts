@@ -3,9 +3,10 @@
  * polled through a route handler as well as rendered on the server.
  */
 import { and, asc, desc, eq, ilike, inArray, isNull, sql, type SQL } from "drizzle-orm";
-import { draftPicks, draftQueue, leagues, matchups, nbaPlayers, nbaTeams, rosterEntries, teams, users } from "@/db/schema";
+import { draftPicks, draftQueue, keepers, leagues, matchups, nbaPlayers, nbaTeams, rosterEntries, teams, users } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { loadProjections } from "@/lib/fantasy/projections";
+import { loadSeasonFantasy, type SeasonFantasyRow } from "@/lib/fantasy/stats-query";
 import { maxRoster, snakeRounds as computeSnakeRounds, waves as computeWaves } from "@/lib/fantasy/roster-size";
 import { parseStoredSettings } from "@/lib/fantasy/settings";
 import { FANTASY_POSITIONS } from "@/lib/nba/positions";
@@ -32,7 +33,45 @@ export type BoardPlayer = {
   avg: number | null;
   /** Projected fantasy points per game. */
   proj: number | null;
+  /** Current-season (league season) FP per game with league scoring, null before opening night. */
+  curAvg: number | null;
+  /** Previous-season (league season - 1) total fantasy points, win bonus and league scoring included. */
+  lastFp: number | null;
+  /** Previous-season FP per game (per game he scored in). */
+  lastAvg: number | null;
+  /** Previous-season games played. */
+  lastGp: number | null;
 };
+
+export const DRAFT_SORT_KEYS = ["lastfp", "lastavg", "curavg", "proj", "name"] as const;
+export type DraftSortKey = (typeof DRAFT_SORT_KEYS)[number];
+export const DEFAULT_DRAFT_SORT: DraftSortKey = "lastfp";
+
+type LeagueRow = typeof leagues.$inferSelect;
+
+/** Season stats of the league's current and previous season: two aggregations for all players asked. */
+async function loadSeasonStats(db: Db, league: LeagueRow, playerIds?: number[]) {
+  const scoring = parseStoredSettings(league.settings).scoring;
+  const [rows, projections] = await Promise.all([
+    loadSeasonFantasy(db, { seasons: [league.season, league.season - 1], playerIds, points: scoring, teamWin: scoring.teamWin }),
+    loadProjections(db, { playerIds, points: scoring, teamWin: scoring.teamWin }),
+  ]);
+  const cur = new Map<number, SeasonFantasyRow>();
+  const last = new Map<number, SeasonFantasyRow>();
+  for (const r of rows) (r.season === league.season ? cur : last).set(r.playerId, r);
+  return (id: number) => {
+    const p = projections.get(id);
+    const l = last.get(id);
+    return {
+      avg: p?.seasonAvg ?? null,
+      proj: p?.projection ?? null,
+      curAvg: cur.get(id)?.fpAvg ?? null,
+      lastFp: l && l.fgp > 0 ? l.totalFp : null,
+      lastAvg: l?.fpAvg ?? null,
+      lastGp: l ? l.gp : null,
+    };
+  };
+}
 
 export type BoardTeam = { id: string; name: string; abbrev: string; ownerId: string; ownerUsername: string };
 
@@ -58,6 +97,8 @@ export type DraftFormat = {
   lastWaveSize: number;
   totalPicks: number;
   snakePicks: number;
+  /** Keepers per team allowed by the league settings (0 = none). */
+  keepers: number;
 };
 
 export type DraftBoard = {
@@ -68,6 +109,8 @@ export type DraftBoard = {
   viewer: { userId: string; teamId: string | null; isCommissioner: boolean };
   format: DraftFormat;
   scheduleReady: boolean;
+  /** Keepers per team id (teams without keepers are absent). They count toward the roster target, not the snake. */
+  keeperCounts: Record<string, number>;
   /** Draft order once started; creation order before. */
   teams: BoardTeam[];
   draft: null | {
@@ -92,17 +135,19 @@ export type DraftBoard = {
     canPick: boolean;
     /** Wave picks I still owe in the current wave. */
     waveRemaining: number | null;
+    /** My keepers (on my roster once the draft starts). */
+    keepers: BoardPlayer[];
     roster: BoardPlayer[];
     queue: BoardPlayer[];
   };
   recap: null | { teams: { teamId: string; picks: BoardPick[]; projectedTotal: number }[] };
 };
 
-export async function loadBoardPlayers(db: Db, playerIds: number[]): Promise<Map<number, BoardPlayer>> {
+export async function loadBoardPlayers(db: Db, playerIds: number[], league: LeagueRow): Promise<Map<number, BoardPlayer>> {
   const out = new Map<number, BoardPlayer>();
   if (playerIds.length === 0) return out;
   const unique = [...new Set(playerIds)];
-  const [rows, projections] = await Promise.all([
+  const [rows, statsOf] = await Promise.all([
     db
       .select({
         id: nbaPlayers.id,
@@ -115,21 +160,33 @@ export async function loadBoardPlayers(db: Db, playerIds: number[]): Promise<Map
       .from(nbaPlayers)
       .leftJoin(nbaTeams, eq(nbaTeams.id, nbaPlayers.teamId))
       .where(inArray(nbaPlayers.id, unique)),
-    loadProjections(db, { playerIds: unique }),
+    loadSeasonStats(db, league, unique),
   ]);
-  for (const r of rows) {
-    const p = projections.get(r.id);
-    out.set(r.id, { ...r, avg: p?.seasonAvg ?? null, proj: p?.projection ?? null });
-  }
+  for (const r of rows) out.set(r.id, { ...r, ...statsOf(r.id) });
   return out;
 }
 
-/** Players still draftable in this league, best projection first. */
+/** Nulls always sort last, whatever the direction. */
+function compareNullable(a: number | null, b: number | null, sign: 1 | -1): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a === b ? 0 : (a - b) * sign;
+}
+
+/**
+ * Players still draftable in this league. Default order: previous-season total fantasy points
+ * (league scoring, win bonus included) descending, ties by projection, then name.
+ */
 export async function listDraftablePlayers(
   db: Db,
   leagueId: string,
-  params: { q?: string; pos?: string; team?: number; limit?: number; offset?: number } = {},
-): Promise<{ total: number; players: BoardPlayer[] }> {
+  params: { q?: string; pos?: string; team?: number; limit?: number; offset?: number; sort?: DraftSortKey; dir?: "asc" | "desc" } = {},
+): Promise<{ total: number; players: BoardPlayer[]; sort: DraftSortKey; dir: "asc" | "desc" }> {
+  const [league] = await db.select().from(leagues).where(eq(leagues.id, leagueId));
+  if (!league) throw new DraftError("not_found");
+  const sort: DraftSortKey = (DRAFT_SORT_KEYS as readonly string[]).includes(params.sort ?? "") ? params.sort! : DEFAULT_DRAFT_SORT;
+  const dir = params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc";
   const where: (SQL | undefined)[] = [
     eq(nbaPlayers.active, true),
     sql`${nbaPlayers.teamId} is not null`,
@@ -140,7 +197,7 @@ export async function listDraftablePlayers(
   if ((FANTASY_POSITIONS as readonly string[]).includes(params.pos ?? "")) where.push(sql`${params.pos} = any(${nbaPlayers.positions})`);
   if (params.team) where.push(eq(nbaPlayers.teamId, params.team));
 
-  const [rows, projections] = await Promise.all([
+  const [rows, statsOf] = await Promise.all([
     db
       .select({
         id: nbaPlayers.id,
@@ -153,21 +210,25 @@ export async function listDraftablePlayers(
       .from(nbaPlayers)
       .leftJoin(nbaTeams, eq(nbaTeams.id, nbaPlayers.teamId))
       .where(and(...where)),
-    loadProjections(db),
+    loadSeasonStats(db, league),
   ]);
-  const players: BoardPlayer[] = rows.map((r) => {
-    const p = projections.get(r.id);
-    return { ...r, avg: p?.seasonAvg ?? null, proj: p?.projection ?? null };
-  });
+  const players: BoardPlayer[] = rows.map((r) => ({ ...r, ...statsOf(r.id) }));
+  const sign = dir === "asc" ? 1 : -1;
+  const keys: Record<Exclude<DraftSortKey, "name">, (p: BoardPlayer) => number | null> = {
+    lastfp: (p) => p.lastFp,
+    lastavg: (p) => p.lastAvg,
+    curavg: (p) => p.curAvg,
+    proj: (p) => p.proj,
+  };
   players.sort((a, b) => {
-    if (a.proj === null && b.proj !== null) return 1;
-    if (b.proj === null && a.proj !== null) return -1;
-    if (a.proj !== null && b.proj !== null && a.proj !== b.proj) return b.proj - a.proj;
-    return a.name.localeCompare(b.name) || a.id - b.id;
+    if (sort === "name") return sign * a.name.localeCompare(b.name) || a.id - b.id;
+    const key = keys[sort];
+    // Ties (and players without the value): projection descending, then name.
+    return compareNullable(key(a), key(b), sign) || compareNullable(a.proj, b.proj, -1) || a.name.localeCompare(b.name) || a.id - b.id;
   });
   const offset = Math.max(0, params.offset ?? 0);
   const limit = Math.min(200, Math.max(1, params.limit ?? 50));
-  return { total: players.length, players: players.slice(offset, offset + limit) };
+  return { total: players.length, players: players.slice(offset, offset + limit), sort, dir };
 }
 
 export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: string): Promise<DraftBoard> {
@@ -212,6 +273,7 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
     lastWaveSize: plan.lastWaveSize,
     totalPicks: totalPicks({ teamCount: n, totalRounds: max }),
     snakePicks: n * snake,
+    keepers: settings.keepers,
   };
 
   const sched = await db
@@ -221,7 +283,13 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
   const scheduled = new Set(sched.flatMap((m) => [m.home, m.away]).filter((x): x is string => x !== null));
   const scheduleReady = n >= 2 && boardTeams.every((t) => scheduled.has(t.id));
 
+  const keeperRows = await db.select().from(keepers).where(eq(keepers.leagueId, leagueId));
+  const keeperCounts: Record<string, number> = {};
+  for (const k of keeperRows) keeperCounts[k.teamId] = (keeperCounts[k.teamId] ?? 0) + 1;
+  const myKeeperIds = keeperRows.filter((k) => k.teamId === myTeam?.id).map((k) => k.playerId);
+
   const base = {
+    keeperCounts,
     leagueId,
     leagueName: league.name,
     leagueStatus: league.status,
@@ -238,13 +306,15 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
     : [];
 
   if (!draft) {
-    const players = await loadBoardPlayers(db, queueRows.map((q) => q.playerId));
+    const players = await loadBoardPlayers(db, [...queueRows.map((q) => q.playerId), ...myKeeperIds], league);
+    const myKept = myKeeperIds.map((id) => players.get(id)).filter((p): p is BoardPlayer => Boolean(p));
     return {
       ...base,
       draft: null,
       me: {
         canPick: false,
         waveRemaining: null,
+        keepers: myKept,
         roster: [],
         queue: queueRows.map((q) => players.get(q.playerId)).filter((p): p is BoardPlayer => Boolean(p)),
       },
@@ -253,7 +323,8 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
   }
 
   const pickRows = await db.select().from(draftPicks).where(eq(draftPicks.draftId, draft.id)).orderBy(asc(draftPicks.overallPick));
-  const players = await loadBoardPlayers(db, [...pickRows.map((p) => p.playerId), ...queueRows.map((q) => q.playerId)]);
+  const players = await loadBoardPlayers(db, [...pickRows.map((p) => p.playerId), ...queueRows.map((q) => q.playerId), ...myKeeperIds], league);
+  const myKept = myKeeperIds.map((id) => players.get(id)).filter((p): p is BoardPlayer => Boolean(p));
   const picks: BoardPick[] = pickRows.flatMap((p) => {
     const player = players.get(p.playerId);
     return player
@@ -291,7 +362,7 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
   } else if (draft.status === "waves") {
     const w = draft.currentWave ?? 1;
     const waiting = draft.order
-      .map((teamId) => ({ teamId, remaining: waveRemaining(cfg, w, counts.get(teamId) ?? 0) }))
+      .map((teamId) => ({ teamId, remaining: waveRemaining(cfg, w, (counts.get(teamId) ?? 0) + (keeperCounts[teamId] ?? 0)) }))
       .filter((x) => x.remaining > 0);
     wave = {
       number: w,
@@ -330,7 +401,8 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
     me: {
       canPick,
       waveRemaining: myWaveRemaining,
-      roster: myPicks.map((p) => p.player),
+      keepers: myKept,
+      roster: [...myKept, ...myPicks.map((p) => p.player)],
       queue: queueRows.map((q) => players.get(q.playerId)).filter((p): p is BoardPlayer => Boolean(p)),
     },
     recap,
@@ -339,12 +411,19 @@ export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: stri
 
 /** Active roster of a team (any league phase), with NBA team, positions, injury and average. */
 export async function getTeamRoster(db: Db, teamId: string): Promise<BoardPlayer[]> {
+  const [owner] = await db
+    .select({ league: leagues })
+    .from(teams)
+    .innerJoin(leagues, eq(leagues.id, teams.leagueId))
+    .where(eq(teams.id, teamId));
+  if (!owner) return [];
+  const league = owner.league;
   const rows = await db
     .select({ playerId: rosterEntries.playerId })
     .from(rosterEntries)
     .where(and(eq(rosterEntries.teamId, teamId), isNull(rosterEntries.releasedAt)))
     .orderBy(desc(rosterEntries.acquiredAt));
-  const players = await loadBoardPlayers(db, rows.map((r) => r.playerId));
+  const players = await loadBoardPlayers(db, rows.map((r) => r.playerId), league);
   const list = rows.map((r) => players.get(r.playerId)).filter((p): p is BoardPlayer => Boolean(p));
   return list.sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1) || a.name.localeCompare(b.name));
 }

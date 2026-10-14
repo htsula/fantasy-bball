@@ -36,7 +36,7 @@ export default async function NotificationsPage() {
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing yet. Draft alerts and league news will show up here.</p>
+        <p className="text-sm text-muted-foreground">Nothing yet. Draft alerts, trade offers and league news will show up here. Turn on push in Settings to get them on your phone.</p>
       ) : (
         <ul className="grid gap-2">
           {items.map((n) => (

@@ -3,31 +3,45 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { nbaPlayers } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { etWeekRange } from "@/lib/nba/dates";
+import type { PointValues } from "./points";
 import { blendProjection, perGame, projectTotal } from "./projection-math";
-import { playerAggregates, statsSeason } from "./stats-query";
+import { DEFAULT_TEAM_WIN_BONUS } from "./settings";
+import { expectedWinBonusSql, playerAggregates, statsSeason } from "./stats-query";
 
 export * from "./projection-math";
 
 export type PlayerProjection = {
   playerId: number;
+  /** Games played (DNPs excluded). */
   seasonGames: number;
+  /** Fantasy points per game INCLUDING the (approximate, see stats-query.ts) win bonus. */
   seasonAvg: number | null;
   recentGames: number;
+  /** Last-15-days average, win bonus included. */
   recentAvg: number | null;
-  /** Projected fantasy points per game. */
+  /** Blended projection from box-score stats only (no bonus). */
+  statProjection: number | null;
+  /** Expected win bonus per game: teamWin x team win% (0 when currently Out or without a team). */
+  winBonusPerGame: number;
+  /** Projected fantasy points per game: statProjection + winBonusPerGame. */
   projection: number | null;
 };
 
-/** Season/last-15-day averages and the blended projection per player (DNPs excluded). */
+/**
+ * Season/last-15-day averages and the blended projection per player. Averages are per game the
+ * player scored in (played, or a bonus-eligible DNP) and include the win bonus; the projection
+ * adds the expected bonus on top of the stat-only blend (so the bonus isn't double counted).
+ */
 export async function loadProjections(
   db: Db,
-  opts: { now?: Date; playerIds?: number[]; season?: number } = {},
+  opts: { now?: Date; playerIds?: number[]; season?: number; teamWin?: number; points?: PointValues } = {},
 ): Promise<Map<number, PlayerProjection>> {
   const now = opts.now ?? new Date();
   const season = opts.season ?? (await statsSeason(db));
   const out = new Map<number, PlayerProjection>();
   if (season === null) return out;
-  const agg = playerAggregates(db, { season, since: null, now });
+  const teamWin = opts.teamWin ?? DEFAULT_TEAM_WIN_BONUS;
+  const agg = playerAggregates(db, { season, since: null, now, teamWin, points: opts.points });
   const rows = await db
     .select({
       playerId: agg.playerId,
@@ -35,22 +49,32 @@ export async function loadProjections(
       seasonFp: agg.seasonFp,
       recentGp: agg.recentGp,
       recentFp: agg.recentFp,
+      seasonFgp: agg.seasonFgp,
+      seasonBonus: agg.seasonBonus,
+      recentFgp: agg.recentFgp,
+      recentBonus: agg.recentBonus,
+      bonusPerGame: expectedWinBonusSql(nbaPlayers.teamId, nbaPlayers.injuryStatus, season, teamWin),
     })
     .from(agg)
+    .innerJoin(nbaPlayers, eq(nbaPlayers.id, agg.playerId))
     .where(opts.playerIds ? inArray(agg.playerId, opts.playerIds) : undefined);
   for (const r of rows) {
+    const statProjection = blendProjection({
+      seasonGames: r.seasonGp,
+      seasonFantasyPoints: r.seasonFp,
+      recentGames: r.recentGp,
+      recentFantasyPoints: r.recentFp,
+    });
+    const winBonusPerGame = Number(r.bonusPerGame ?? 0);
     out.set(r.playerId, {
       playerId: r.playerId,
       seasonGames: r.seasonGp,
-      seasonAvg: perGame(r.seasonFp, r.seasonGp),
+      seasonAvg: perGame(r.seasonFp + r.seasonBonus, r.seasonFgp),
       recentGames: r.recentGp,
-      recentAvg: perGame(r.recentFp, r.recentGp),
-      projection: blendProjection({
-        seasonGames: r.seasonGp,
-        seasonFantasyPoints: r.seasonFp,
-        recentGames: r.recentGp,
-        recentFantasyPoints: r.recentFp,
-      }),
+      recentAvg: perGame(r.recentFp + r.recentBonus, r.recentFgp),
+      statProjection,
+      winBonusPerGame,
+      projection: statProjection === null ? null : statProjection + winBonusPerGame,
     });
   }
   return out;

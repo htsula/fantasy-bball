@@ -116,6 +116,35 @@ describe("deriveState", () => {
   it("goes straight to waves when there are no snake rounds", () => {
     expect(deriveState({ ...cfg, snakeRounds: 0 }, [0, 0, 0, 0])).toMatchObject({ status: "waves", wave: 1 });
   });
+
+  describe("with keepers", () => {
+    // Team 0 keeps 3 (needs 2 picks: both snake), team 1 keeps 1, teams 2 and 3 keep none.
+    const keepers = [3, 1, 0, 0];
+
+    it("judges the snake on picks made, not keepers", () => {
+      expect(deriveState(cfg, [1, 0, 0, 0], keepers)).toEqual({ status: "snake", currentPick: 2 });
+      expect(deriveState(cfg, [2, 2, 2, 1], keepers)).toEqual({ status: "snake", currentPick: 8 });
+    });
+
+    it("counts keepers toward wave progress: a keeper-heavy team can owe nothing for a wave", () => {
+      // After the snake team 0 already has 2 + 3 = 5 players: complete roster, nothing owed.
+      expect(deriveState(cfg, [2, 2, 2, 2], keepers)).toMatchObject({ status: "waves", wave: 1 });
+      expect(waveRemaining(cfg, 1, 2 + keepers[0])).toBe(0);
+      expect(waveRemaining(cfg, 1, 2 + keepers[1])).toBe(1); // 3 of the 4 due by wave 1
+      expect(waveRemaining(cfg, 1, 2 + keepers[2])).toBe(2);
+      // Teams 2 and 3 finish wave 1 (4 each) and team 1 makes its 1 pick: wave 2.
+      expect(deriveState(cfg, [2, 3, 4, 4], keepers)).toMatchObject({ status: "waves", wave: 2 });
+    });
+
+    it("completes when every team has picks + keepers = totalRounds", () => {
+      expect(deriveState(cfg, [2, 4, 5, 4], keepers).status).toBe("waves");
+      expect(deriveState(cfg, [2, 4, 5, 5], keepers).status).toBe("complete"); // drafted 2, 4, 5, 5
+    });
+
+    it("matches the no-keeper behavior when the counts are zero or omitted", () => {
+      expect(deriveState(cfg, [4, 4, 4, 4], [0, 0, 0, 0])).toEqual(deriveState(cfg, [4, 4, 4, 4]));
+    });
+  });
 });
 
 describe("house formula (reused from roster-size)", () => {

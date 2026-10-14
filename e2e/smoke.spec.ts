@@ -34,6 +34,7 @@ test("admin invites a friend who redeems the link and lands on home", async ({ p
 });
 
 test("seeded NBA data: players table, player card game log, scoreboard and admin sync panel", async ({ page }) => {
+  test.setTimeout(90_000); // cold dev-server compiles of several routes
   await page.goto("/login");
   await page.getByLabel("Username").fill("admin");
   await page.getByLabel("Password").fill("e2e-admin-password");
@@ -45,6 +46,13 @@ test("seeded NBA data: players table, player card game log, scoreboard and admin
   await expect(page).toHaveURL(/\/players/);
   await expect(page.getByRole("heading", { name: "Players" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Admin" })).toBeVisible();
+  // The season selector shows which season the table is on (the fixtures hold 2025-26 plus a few seeded 2026-27 games).
+  await expect(page.getByLabel("Season", { exact: true })).toHaveValue(/^202[67]$/);
+  await page.goto("/players?season=2026&range=7");
+  await expect(page.getByLabel("Season", { exact: true })).toHaveValue("2026");
+  await expect(page.getByTestId("season-note")).toContainText("2025-26");
+  await expect(page.getByLabel("Time range")).toBeDisabled(); // ranges only apply to the current season
+  await expect(page.getByRole("link", { name: /^FP/ }).first()).toHaveAttribute("title", /team-win bonus/);
 
   // Search for a player from the seeded box score and open the card.
   await page.getByLabel("Search name").fill("Prosper");
@@ -57,6 +65,11 @@ test("seeded NBA data: players table, player card game log, scoreboard and admin
 
   await expect(page.getByRole("heading", { name: "Olivier-Maxence Prosper" })).toBeVisible();
   await expect(page.getByText("Game log")).toBeVisible();
+  await page.getByTestId("log-season-switch").getByRole("link", { name: "2025-26" }).click();
+  await expect(page).toHaveURL(/logSeason=2026/);
+  const bySeason = page.getByTestId("fantasy-by-season");
+  await expect(bySeason).toContainText("Fantasy by season");
+  await expect(bySeason.getByTestId("season-row").filter({ hasText: "2025-26" })).toBeVisible();
   const logRow = page.getByRole("row", { name: /Mar 10/ });
   await expect(logRow).toContainText("@ PHI");
   await expect(logRow).toContainText("L 139-129");

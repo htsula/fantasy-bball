@@ -3,6 +3,7 @@
  * `sync_runs` row, and only performs idempotent upserts.
  */
 import { and, desc, eq, gte, inArray, lt, lte, notInArray, or, sql, type AnyColumn } from "drizzle-orm";
+import { log } from "@/lib/log";
 import {
   nbaGames,
   nbaInjuries,
@@ -30,6 +31,13 @@ import {
   type StatRow,
   type TeamRow,
 } from "./normalize";
+import {
+  INJURY_LOOKAHEAD_MS,
+  captureTipoffSnapshots,
+  injuryRefreshDue,
+  markInjuryRefresh,
+} from "./snapshots";
+import { removeCutPlayers } from "@/lib/rosters/service";
 
 const MIN = 60_000;
 const HOUR = 3_600_000;
@@ -134,7 +142,7 @@ async function recordRun(
     const [row] = await db.insert(syncRuns).values({ job, startedAt: now() }).returning({ id: syncRuns.id });
     runId = row.id;
   } catch (err) {
-    console.error(`[sync:${job}] could not record run start`, err);
+    log.error("sync.run_start_not_recorded", { job }, err);
   }
   let result: SyncResult;
   try {
@@ -143,7 +151,7 @@ async function recordRun(
   } catch (err) {
     result = { job, ok: false, counts: {}, error: (err instanceof Error ? err.message : String(err)).slice(0, 2000) };
   }
-  if (!result.ok) console.error(`[sync:${job}] failed: ${result.error}`);
+  if (!result.ok) log.error("sync.failed", { job, error: result.error });
   if (runId !== undefined) {
     try {
       await db
@@ -151,7 +159,7 @@ async function recordRun(
         .set({ finishedAt: now(), ok: result.ok, error: result.error ?? null, counts: result.counts })
         .where(eq(syncRuns.id, runId));
     } catch (err) {
-      console.error(`[sync:${job}] could not record run end`, err);
+      log.error("sync.run_end_not_recorded", { job }, err);
     }
   }
   return result;
@@ -380,6 +388,8 @@ export async function ingestScoreboard(db: Db, raw: unknown, now = new Date()) {
   const { games, teams } = normalizeScoreboard(raw);
   await upsertTeams(db, teams, now);
   await upsertGames(db, games, now);
+  // A game seen in progress (or final) for the first time gets its tip-off snapshot.
+  await captureTipoffSnapshots(db, now, games.map((g) => g.id));
   return games.length;
 }
 
@@ -400,7 +410,7 @@ export async function ingestSummary(
     .from(nbaGames)
     .where(eq(nbaGames.id, gameId));
   if (!existing) return { statRows: 0, final: false, known: false };
-  if (game && game.id !== gameId) console.warn(`[sync] summary id ${game.id} != requested ${gameId}`);
+  if (game && game.id !== gameId) log.warn("sync.summary_id_mismatch", { got: game.id, requested: gameId });
 
   await upsertPlayers(db, players, "insert-only", now);
   await upsertStats(db, stats.filter((s) => s.gameId === gameId), now);
@@ -428,6 +438,7 @@ export async function ingestSummary(
       updatedAt: now,
     })
     .where(eq(nbaGames.id, gameId));
+  await captureTipoffSnapshots(db, now, [gameId]);
   await saveSnapshot(db, "summary", String(gameId), slimForSnapshot(raw), now);
   return { statRows: stats.length, final: markFinal, known: true };
 }
@@ -468,25 +479,32 @@ export async function ingestNews(db: Db, raw: unknown, now = new Date()) {
 // ---------------------------------------------------------------------------------------------
 // live window
 
+/** ESPN event ids are ~9 digits; seeded demo / e2e games use ids from 9,000,000 and are never refreshed from ESPN. */
+export const SYNTHETIC_GAME_ID_MIN = 9_000_000;
+
 /** Games that need live attention right now. Pure DB check, no network. */
 export async function liveWindow(db: Db, now: Date) {
   const rows = await db
     .select({ id: nbaGames.id, status: nbaGames.status, startTime: nbaGames.startTime })
     .from(nbaGames)
     .where(
-      or(
+      and(
+        lt(nbaGames.id, SYNTHETIC_GAME_ID_MIN),
+        or(
         eq(nbaGames.status, "in"),
-        // tipping off within the hour, or tipped off recently and we have not seen it start yet
+        // tipping off within 90 minutes (injury refresh + early scoreboard), or tipped off
+        // recently and we have not seen it start yet
         and(
           eq(nbaGames.status, "scheduled"),
           gte(nbaGames.startTime, new Date(now.getTime() - 3 * HOUR)),
-          lte(nbaGames.startTime, new Date(now.getTime() + HOUR)),
+          lte(nbaGames.startTime, new Date(now.getTime() + INJURY_LOOKAHEAD_MS)),
         ),
         // finished recently and the post-final box score has not been settled
         and(
           eq(nbaGames.status, "final"),
           eq(nbaGames.statsFinal, false),
           gte(nbaGames.finishedAt, new Date(now.getTime() - 3 * HOUR)),
+        ),
         ),
       ),
     );
@@ -495,6 +513,8 @@ export async function liveWindow(db: Db, now: Date) {
     games: rows,
     /** A scheduled game whose tip-off has passed: status is stale, so refresh the scoreboard now. */
     overdue: rows.some((r) => r.status === "scheduled" && r.startTime <= now),
+    /** A game is scheduled to tip within the injury lookahead (or just did): injuries should be fresh. */
+    tipSoon: rows.some((r) => r.status === "scheduled"),
   };
 }
 
@@ -585,9 +605,17 @@ export async function syncDaily(db: Db, client: EspnClient, opts: SyncOptions = 
       });
     }
 
+    // Cut players leave their fantasy teams (same all-rosters-loaded guard as deactivation).
+    const allRostersLoaded = teamIds.length >= 25 && rosterFailures === 0 && seen.size > 0;
+    await step("auto-drop", async () => {
+      const res = await removeCutPlayers(db, { allRostersLoaded, now: t });
+      counts.autoDrops = res.dropped;
+    });
+
     // 3. injuries, 4. news
     await step("injuries", async () => {
       counts.injuries = await ingestInjuries(db, await client.injuries(), t);
+      await markInjuryRefresh(db, t);
     });
     await step("news", async () => {
       counts.news = await ingestNews(db, await client.news(50), t);
@@ -696,6 +724,19 @@ export async function syncLive(db: Db, client: EspnClient, opts: SyncOptions = {
     const errors: string[] = [];
     const counts: Record<string, unknown> = {};
 
+    // Fresh injury statuses before tip-off so snapshots carry them (at most every 30 minutes,
+    // and only when a game is about to tip).
+    counts.injuriesRefreshed = false;
+    if (await injuryRefreshDue(db, t, win.tipSoon)) {
+      try {
+        await ingestInjuries(db, await client.injuries(), t);
+        await markInjuryRefresh(db, t);
+        counts.injuriesRefreshed = true;
+      } catch (err) {
+        errors.push(`injuries: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     // Scoreboards for every ET date that has an active game (a 10pm tip is still "yesterday"
     // after midnight), plus today. Throttled to once per 5 minutes unless a tip-off is overdue.
     const dates = new Set<string>([etDateString(t)]);
@@ -712,6 +753,15 @@ export async function syncLive(db: Db, client: EspnClient, opts: SyncOptions = {
       }
     }
     counts.scoreboards = boards;
+
+    // Games that just started (or finished unseen) get their tip-off snapshot, even if a box
+    // score pull fails below. ingestScoreboard/ingestSummary also snapshot; this is the backstop.
+    try {
+      const snaps = await captureTipoffSnapshots(db, t);
+      counts.snapshots = snaps.games;
+    } catch (err) {
+      errors.push(`snapshots: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     const candidates = await db
       .select({ id: nbaGames.id })
@@ -824,7 +874,7 @@ export async function ensureFreshLive(
     if (!locked.acquired) return { ran: false, reason: "locked" };
     return { ran: true, reason: "synced", result: locked.value };
   } catch (err) {
-    console.error("[ensureFreshLive] failed", err);
+    log.error("sync.ensure_fresh_live_failed", {}, err);
     return { ran: false, reason: "error" };
   }
 }

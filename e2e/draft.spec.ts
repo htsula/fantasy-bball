@@ -24,6 +24,13 @@ const listedIds = (page: Page) =>
 
 const rosterCount = (page: Page) => page.getByTestId("my-roster-item").count();
 
+/** Drafts the first listed player (the list hides picked players as soon as the board updates). */
+async function draftFirst(page: Page, target: number) {
+  await expect(page.getByTestId("draft-button").first()).toBeEnabled({ timeout: 30_000 });
+  await page.getByTestId("draft-button").first().click();
+  await expect.poll(() => rosterCount(page), { timeout: 15_000 }).toBeGreaterThanOrEqual(target);
+}
+
 /** Waits (briefly) for my roster to reach `count`; false when it didn't, e.g. the click lost a race. */
 const reachedRoster = (page: Page, count: number) =>
   expect
@@ -33,17 +40,6 @@ const reachedRoster = (page: Page, count: number) =>
       () => true,
       () => false,
     );
-
-/** Drafts the first listed player; retries when a stale list made the click lose (player_taken). */
-async function draftFirst(page: Page, target: number) {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    await expect(page.getByTestId("draft-button").first()).toBeEnabled({ timeout: 30_000 });
-    await page.getByTestId("draft-button").first().click({ timeout: 10_000 }).catch(() => undefined);
-    if (await reachedRoster(page, target)) return;
-    await page.waitForTimeout(1_500);
-  }
-  throw new Error("could not draft a player");
-}
 
 /** Drafts players with ids in residue class `slot` (mod 4) until my roster reaches `target`, so teams don't collide. */
 async function draftUntil(page: Page, slot: number, target: number) {
@@ -89,12 +85,14 @@ test("4-team draft: queue, snake, simultaneous waves, commissioner pick, complet
     ["drafter2", "Bravo Boys", "UBB"],
     ["drafter3", "Charlie Crew", "UCC"],
   ] as const;
+  // One reusable link serves all three friends.
+  await admin.goto(`/leagues/${leagueId}/invite`);
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const link = admin.getByLabel("Invite link");
+  await expect(link).toHaveValue(/\/invite\//);
+  const inviteUrl = await link.inputValue();
   for (const [username, name, abbrev] of specs) {
-    await admin.goto(`/leagues/${leagueId}/invite`);
-    await admin.getByRole("button", { name: "Create league invite link" }).click();
-    const link = admin.getByLabel("Generated link");
-    await expect(link).toHaveValue(/\/invite\//);
-    users.push(await newInvitee(browser, await link.inputValue(), username, name, abbrev));
+    users.push(await newInvitee(browser, inviteUrl, username, name, abbrev));
   }
   const admins: Player = { page: admin, context: admin.context(), abbrev: "CCD", name: "Commish Crew", username: "admin" };
   const all = [admins, ...users];
@@ -130,6 +128,14 @@ test("4-team draft: queue, snake, simultaneous waves, commissioner pick, complet
   await queuer.goto(`/leagues/${leagueId}/draft`);
   await expect(queuer.getByText("Waiting for the commissioner to start the draft.")).toBeVisible();
   await expect(queuer.getByTestId("start-draft")).toHaveCount(0);
+  // Default sort: last season's total FP, descending (players without a last season are listed last).
+  await expect(queuer.getByTestId("player-row").first()).toBeVisible();
+  await expect(queuer.getByRole("columnheader", { name: /^Last FP( ▼)?$/ }).first()).toHaveAttribute("aria-sort", "descending");
+  const lastFps = (await queuer.locator('[data-testid="player-search"] [data-testid="last-fp"]').allTextContents())
+    .map((t) => Number(t))
+    .filter((n) => !Number.isNaN(n));
+  expect(lastFps.length).toBeGreaterThan(0);
+  expect(lastFps).toEqual([...lastFps].sort((a, b) => b - a));
   await queuer.getByTestId("queue-button").nth(0).click();
   await expect(queuer.getByTestId("queue-item")).toHaveCount(1);
   await queuer.getByTestId("queue-button").nth(0).click();
@@ -191,7 +197,7 @@ test("4-team draft: queue, snake, simultaneous waves, commissioner pick, complet
     racerA.page.locator(`[data-player-id="${contested}"]`).getByTestId("draft-button").click(),
     racerB.page.locator(`[data-player-id="${contested}"]`).getByTestId("draft-button").click(),
   ]);
-  const lost = (p: Player) => p.page.getByText(/just drafted or is already on a roster/).count();
+  const lost = (p: Player) => p.page.getByText(/just taken|just drafted or is already on a roster/).count();
   await expect.poll(async () => (await lost(racerA)) + (await lost(racerB)), { timeout: 15_000 }).toBeGreaterThan(0);
 
   // Everyone finishes wave 1 (4 picks each) concurrently.
@@ -202,13 +208,17 @@ test("4-team draft: queue, snake, simultaneous waves, commissioner pick, complet
   const idle = users[0];
   const active = all.filter((p) => p !== idle);
   await Promise.all(active.map((p) => draftUntil(p.page, all.indexOf(p), 6)));
-  await expect(admin.getByTestId("wave-status")).toContainText(idle.name, { timeout: 40_000 });
-  await expect(admin.getByTestId("wave-status")).not.toContainText("Bravo Boys");
+  // Wait until the commissioner's board shows ONLY the idle team still owing picks. Picking while
+  // other teams are still finishing races them for players (correctly rejected as "just taken"),
+  // and their "(1 left)" would make the check below pass for the wrong team.
+  await expect(admin.getByTestId("wave-status")).toContainText(`waiting on ${idle.name} (2 left).`, { timeout: 40_000 });
 
   await admin.getByText("Pick for team...").click();
   await admin.getByLabel("Team to pick for").selectOption({ label: `${idle.name} (2 left)` });
   await admin.getByTestId("commissioner-pick-button").first().click();
-  await expect(admin.getByTestId("wave-status")).toContainText("(1 left)", { timeout: 20_000 });
+  await expect(admin.getByTestId("wave-status")).toContainText(`waiting on ${idle.name} (1 left).`, { timeout: 20_000 });
+  // The list hides the player just picked as soon as the board updates, so a single click completes the draft.
+  await expect(admin.getByTestId("commissioner-pick-button").first()).toBeEnabled();
   await admin.getByTestId("commissioner-pick-button").first().click();
 
   // ---- Complete: recap, rosters, league status
@@ -218,12 +228,13 @@ test("4-team draft: queue, snake, simultaneous waves, commissioner pick, complet
 
   await admin.goto(`/leagues/${leagueId}`);
   await expect(admin.getByRole("heading", { name: "Draft League" }).locator("xpath=..").getByText("In season")).toBeVisible();
-  await expect(admin.getByTestId("draft-card")).toContainText("The draft is complete.");
+  await expect(admin.getByTestId("draft-card")).toHaveCount(0); // hidden once the draft is complete
+  await expect(admin.getByTestId("standings-snapshot")).toBeVisible();
 
   await admin.goto(`/leagues/${leagueId}/draft`);
   await admin.getByTestId("recap-team").filter({ hasText: idle.name }).getByRole("link", { name: idle.name }).click();
   await expect(admin.getByTestId("roster-row")).toHaveCount(6, { timeout: 30_000 }); // first compile of the team page
-  await expect(admin.getByTestId("team-roster")).toContainText("Roster (6/6)");
+  await expect(admin.getByTestId("roster-count")).toHaveText("6 / 6");
 
   // ---- Notifications: in-app list, mark all read
   const member = users[1].page;

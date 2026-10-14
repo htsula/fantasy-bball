@@ -1,6 +1,7 @@
 /** Read-side queries for the Players table and the player card. */
 import { and, asc, desc, eq, gte, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import {
+  leagues,
   nbaGames,
   nbaInjuries,
   nbaNews,
@@ -11,7 +12,14 @@ import {
 import type { Db } from "@/db/types";
 import { fantasyPoints } from "@/lib/fantasy/points";
 import { loadGamesRemaining, loadProjections, projectedTotals } from "@/lib/fantasy/projections";
-import { playerAggregates, projectionSql, statsSeason } from "@/lib/fantasy/stats-query";
+import { DEFAULT_SCORING, parseStoredSettings } from "@/lib/fantasy/settings";
+import {
+  expectedWinBonusSql,
+  loadSeasonFantasy,
+  playerAggregates,
+  projectionSql,
+  resolveSeason,
+} from "@/lib/fantasy/stats-query";
 import { FANTASY_POSITIONS } from "./positions";
 
 export const RANGES = ["season", "7", "15", "30"] as const;
@@ -30,11 +38,25 @@ export type PlayerListParams = {
   inj?: string;
   healthy?: boolean;
   range?: Range;
+  /**
+   * Regular season to show (ESPN end year). Only the current and previous season are offered, and
+   * only when they have data; anything else falls back to the default (current season once it has
+   * a final game, else the previous one). Ranges apply to the current season only.
+   */
+  season?: number;
   sort?: SortKey;
   dir?: "asc" | "desc";
   page?: number;
   now?: Date;
+  /**
+   * League context: `status` filters by fantasy ownership in that league (default "all") and
+   * every row gets `rosteredBy` (the owning fantasy team, or null for a free agent).
+   */
+  league?: { id: string; status?: OwnershipFilter };
 };
+
+export const OWNERSHIP_FILTERS = ["fa", "rostered", "all"] as const;
+export type OwnershipFilter = (typeof OWNERSHIP_FILTERS)[number];
 
 export function rangeSince(range: Range, now: Date): Date | null {
   return range === "season" ? null : new Date(now.getTime() - Number(range) * 86_400_000);
@@ -44,10 +66,19 @@ const escapeLike = (v: string) => v.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export async function listPlayers(db: Db, params: PlayerListParams) {
   const now = params.now ?? new Date();
-  const range = params.range ?? "season";
-  const season = (await statsSeason(db)) ?? 0;
-  const agg = playerAggregates(db, { season, since: rangeSince(range, now), now });
-  const proj = projectionSql(agg);
+  const choice = await resolveSeason(db, now, params.season);
+  const season = choice.selected ?? 0;
+  // 7/15/30-day ranges look back from now, so they only make sense for the current season.
+  const rangeLocked = season !== choice.current;
+  const range = rangeLocked ? "season" : (params.range ?? "season");
+  // League scoring (stat values and the win bonus) in a league context, the defaults otherwise.
+  let scoring = DEFAULT_SCORING;
+  if (params.league) {
+    const [lg] = await db.select({ settings: leagues.settings }).from(leagues).where(eq(leagues.id, params.league.id));
+    if (lg) scoring = parseStoredSettings(lg.settings).scoring;
+  }
+  const agg = playerAggregates(db, { season, since: rangeSince(range, now), now, points: scoring, teamWin: scoring.teamWin });
+  const proj = projectionSql(agg, expectedWinBonusSql(p.teamId, p.injuryStatus, season, scoring.teamWin));
 
   const where: (SQL | undefined)[] = [eq(p.active, true)];
   if (params.q?.trim()) where.push(ilike(p.fullName, `%${escapeLike(params.q.trim())}%`));
@@ -55,6 +86,15 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
   if (params.team) where.push(eq(p.teamId, params.team));
   if (params.healthy) where.push(isNull(p.injuryStatus));
   else if (params.inj) where.push(sql`lower(${p.injuryStatus}) = lower(${params.inj})`);
+  // Fantasy ownership within a league (the partial unique index guarantees one active owner).
+  const owner = params.league
+    ? (col: "id" | "name" | "abbrev") =>
+        sql`(select t.${sql.raw(col)} from roster_entries re join teams t on t.id = re.team_id where re.league_id = ${params.league!.id} and re.player_id = ${p.id} and re.released_at is null)`
+    : null;
+  if (owner && params.league?.status === "fa") {
+    where.push(sql`${owner("id")} is null`, sql`${p.teamId} is not null`); // addable: on an NBA team
+  }
+  if (owner && params.league?.status === "rostered") where.push(sql`${owner("id")} is not null`);
   const cond = and(...where);
 
   const dir = params.dir === "asc" ? asc : desc;
@@ -72,9 +112,9 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
     tpm: perGame(agg.tpm),
     fgpct: sql`${agg.fgm}::float8 / nullif(${agg.fga}, 0)`,
     ftpct: sql`${agg.ftm}::float8 / nullif(${agg.fta}, 0)`,
-    fpavg: perGame(agg.fpTotal),
+    fpavg: sql`(${agg.fpTotal} + ${agg.bonus})::float8 / nullif(${agg.fgp}, 0)`,
     proj,
-    fptotal: agg.fpTotal,
+    fptotal: sql`${agg.fpTotal} + ${agg.bonus}`,
   };
   const sort = params.sort && params.sort in sortExpr ? params.sort : "fptotal";
   const primary = sort === "name" ? (params.dir === "desc" ? desc : asc)(sortExpr.name) : sql`${dir(sortExpr[sort] as SQL)} nulls last`;
@@ -104,7 +144,12 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
         ftm: agg.ftm,
         fta: agg.fta,
         fpTotal: agg.fpTotal,
+        bonus: agg.bonus,
+        fgp: agg.fgp,
         proj,
+        rosteredById: owner ? owner("id") : sql<string | null>`null`,
+        rosteredByName: owner ? owner("name") : sql<string | null>`null`,
+        rosteredByAbbrev: owner ? owner("abbrev") : sql<string | null>`null`,
       })
       .from(p)
       .leftJoin(nbaTeams, eq(nbaTeams.id, p.teamId))
@@ -118,6 +163,10 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
 
   return {
     season: season || null,
+    seasons: choice.options,
+    currentSeason: choice.current,
+    range,
+    rangeLocked,
     page,
     total,
     pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
@@ -131,6 +180,9 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
         injuryStatus: r.injuryStatus,
         injuryDetail: r.injuryDetail,
         teamAbbrev: r.teamAbbrev,
+        rosteredBy: r.rosteredById
+          ? { id: String(r.rosteredById), name: String(r.rosteredByName), abbrev: String(r.rosteredByAbbrev) }
+          : null,
         gp,
         min: avg(r.min),
         pts: avg(r.pts),
@@ -142,9 +194,10 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
         tpm: avg(r.tpm),
         fgPct: r.fga ? (r.fgm ?? 0) / r.fga : null,
         ftPct: r.fta ? (r.ftm ?? 0) / r.fta : null,
-        fpAvg: avg(r.fpTotal),
+        // FP include the approximate win bonus and average over the games he scored in.
+        fpAvg: (r.fgp ?? 0) > 0 ? ((r.fpTotal ?? 0) + (r.bonus ?? 0)) / r.fgp! : null,
         proj: r.proj === null ? null : Number(r.proj),
-        fpTotal: gp > 0 ? (r.fpTotal ?? 0) : null,
+        fpTotal: (r.fgp ?? 0) > 0 ? (r.fpTotal ?? 0) + (r.bonus ?? 0) : null,
       };
     }),
   };
@@ -164,7 +217,7 @@ export async function listFilterOptions(db: Db) {
 
 // ---------------------------------------------------------------------------------------------
 
-export async function getPlayerCard(db: Db, playerId: number, now = new Date()) {
+export async function getPlayerCard(db: Db, playerId: number, now = new Date(), opts: { logSeason?: number } = {}) {
   const [row] = await db
     .select({ player: p, team: nbaTeams })
     .from(p)
@@ -173,7 +226,9 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date()) 
   if (!row) return null;
   const { player, team } = row;
 
-  const season = await statsSeason(db);
+  const choice = await resolveSeason(db, now);
+  const season = choice.default;
+  const logSeason = opts.logSeason !== undefined && choice.options.includes(opts.logSeason) ? opts.logSeason : season;
   const teams = new Map((await db.select().from(nbaTeams)).map((t) => [t.id, t]));
 
   const [injury] = await db.select().from(nbaInjuries).where(eq(nbaInjuries.playerId, playerId));
@@ -198,8 +253,9 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date()) 
         tpm: a.tpm / a.gp,
         fgPct: a.fga ? a.fgm / a.fga : null,
         ftPct: a.fta ? a.ftm / a.fta : null,
-        fpAvg: a.fpTotal / a.gp,
-        fpTotal: a.fpTotal,
+        // Includes the approximate win bonus (see stats-query.ts), averaged over games he scored in.
+        fpAvg: (a.fpTotal + a.bonus) / Math.max(1, a.fgp),
+        fpTotal: a.fpTotal + a.bonus,
       };
     }
   }
@@ -208,7 +264,7 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date()) 
     .select({ stat: s, game: nbaGames })
     .from(s)
     .innerJoin(nbaGames, eq(nbaGames.id, s.gameId))
-    .where(eq(s.playerId, playerId))
+    .where(and(eq(s.playerId, playerId), logSeason !== null ? eq(nbaGames.season, logSeason) : undefined))
     .orderBy(desc(nbaGames.startTime))
     .limit(30);
   const gameLog = logRows.map(({ stat, game }) => {
@@ -254,6 +310,22 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date()) 
     .orderBy(desc(nbaNews.published))
     .limit(6);
 
+  // Fantasy by season (regular season, default scoring): current and previous season always, others when present.
+  const seasonRows = await loadSeasonFantasy(db, { playerIds: [playerId] });
+  const bySeason = [...new Set([choice.current, choice.previous, ...seasonRows.map((r) => r.season)])]
+    .sort((a, b) => b - a)
+    .map((sn) => {
+      const r = seasonRows.find((x) => x.season === sn);
+      return {
+        season: sn,
+        gp: r?.gp ?? 0,
+        minAvg: r && r.gp > 0 ? r.minutes / r.gp : null,
+        fpAvg: r?.fpAvg ?? null,
+        totalFp: r && r.fgp > 0 ? r.totalFp : null,
+        bonusFp: r && r.fgp > 0 ? r.bonusFp : null,
+      };
+    });
+
   const projection = (await loadProjections(db, { now, playerIds: [playerId], season: season ?? undefined })).get(playerId) ?? null;
   const remaining = player.teamId !== null ? (await loadGamesRemaining(db, now)).get(player.teamId) : undefined;
 
@@ -262,6 +334,9 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date()) 
     team: team ?? null,
     injury: injury ?? null,
     season,
+    logSeason,
+    logSeasons: choice.options,
+    bySeason,
     averages,
     gameLog,
     schedule,

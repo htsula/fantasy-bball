@@ -7,11 +7,13 @@
  * wins. Notifications are sent AFTER the transaction commits.
  */
 import { randomInt } from "node:crypto";
+import { log } from "@/lib/log";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   draftPicks,
   draftQueue,
   drafts,
+  keepers,
   leagues,
   matchups,
   nbaPlayers,
@@ -23,7 +25,8 @@ import {
   type Team,
 } from "@/db/schema";
 import type { Db } from "@/db/types";
-import { maxRoster, snakeRounds as computeSnakeRounds } from "@/lib/fantasy/roster-size";
+import { logActivity } from "@/lib/activity/service";
+import { keepersRoom, maxRoster, snakeRounds as computeSnakeRounds } from "@/lib/fantasy/roster-size";
 import { parseStoredSettings } from "@/lib/fantasy/settings";
 import { notifier, type Notifier, type NotifyInput } from "@/lib/notifications/service";
 import { z } from "zod";
@@ -46,6 +49,7 @@ export type DraftErrorCode =
   | "not_enough_teams"
   | "schedule_required"
   | "invalid_config"
+  | "keepers_invalid"
   | "draft_not_active"
   | "team_not_found"
   | "not_your_turn"
@@ -53,7 +57,9 @@ export type DraftErrorCode =
   | "player_taken"
   | "player_unavailable"
   | "nothing_to_undo"
-  | "cannot_undo";
+  | "cannot_undo"
+  | "cannot_restart"
+  | "confirm_mismatch";
 
 const MESSAGES: Record<DraftErrorCode, string> = {
   not_found: "Draft not found.",
@@ -64,6 +70,8 @@ const MESSAGES: Record<DraftErrorCode, string> = {
   schedule_required:
     "Generate the schedule first (League > Schedule). It must include every team, and it resets whenever teams join or leave.",
   invalid_config: "The roster settings leave no room for a draft (roster pool is smaller than the number of teams).",
+  keepers_invalid:
+    "A team has more keepers than the roster has room for after the snake rounds. Reduce keepers (Keepers page) or the keepers setting, then start again.",
   draft_not_active: "The draft isn't active.",
   team_not_found: "Team not found in this league.",
   not_your_turn: "It's not that team's turn to pick.",
@@ -72,6 +80,8 @@ const MESSAGES: Record<DraftErrorCode, string> = {
   player_unavailable: "That player isn't available to draft (inactive or not on an NBA team).",
   nothing_to_undo: "There are no picks to undo.",
   cannot_undo: "This draft can't be undone because rosters have changed since it finished.",
+  cannot_restart: "The draft can only be restarted while it is in progress (not before it starts and not after it is complete).",
+  confirm_mismatch: "Type the league name exactly to confirm.",
 };
 
 export class DraftError extends Error {
@@ -109,7 +119,7 @@ async function sendAll(db: Db, notify: Notifier | undefined, inputs: NotifyInput
     try {
       await send(db, input);
     } catch (err) {
-      console.error("[draft] notification failed", err);
+      log.error("draft.notification_failed", {}, err);
     }
   }
 }
@@ -142,11 +152,27 @@ async function teamPickCounts(tx: Db, draftId: string, order: string[]): Promise
   return order.map((t) => byTeam.get(t) ?? 0);
 }
 
+/** Keepers per team, aligned with `order`. Keepers are fixed once the draft starts. */
+async function teamKeeperCounts(tx: Db, leagueId: string, order: string[]): Promise<number[]> {
+  const rows = await tx
+    .select({ teamId: keepers.teamId, n: sql<number>`count(*)::int` })
+    .from(keepers)
+    .where(eq(keepers.leagueId, leagueId))
+    .groupBy(keepers.teamId);
+  const byTeam = new Map(rows.map((r) => [r.teamId, r.n]));
+  return order.map((t) => byTeam.get(t) ?? 0);
+}
+
 async function lockDraft(tx: Db, draftId: string): Promise<Draft> {
   if (!uuidSchema.safeParse(draftId).success) throw new DraftError("not_found");
   const [draft] = await tx.select().from(drafts).where(eq(drafts.id, draftId)).for("update");
   if (!draft) throw new DraftError("not_found");
   return draft;
+}
+
+async function playerNameOf(tx: Db, playerId: number): Promise<string> {
+  const [p] = await tx.select({ name: nbaPlayers.fullName }).from(nbaPlayers).where(eq(nbaPlayers.id, playerId));
+  return p?.name ?? "a player";
 }
 
 async function leagueOf(tx: Db, leagueId: string): Promise<League> {
@@ -227,7 +253,34 @@ export async function startDraft(db: Db, leagueId: string, userId: string, deps:
       random,
     );
     const cfg: DraftConfig = { teamCount: n, snakeRounds: snake, totalRounds: max, waveSize: settings.waveSize };
-    const initial = deriveState(cfg, order.map(() => 0));
+
+    // Keepers: drop any whose player is no longer on an active NBA roster, check the limits, then put
+    // the rest on their teams' rosters. They leave the draftable pool (they're rostered) and every queue.
+    const kept = await tx.select().from(keepers).where(eq(keepers.leagueId, leagueId));
+    if (kept.length) {
+      const info = await tx
+        .select({ id: nbaPlayers.id, active: nbaPlayers.active, teamId: nbaPlayers.teamId })
+        .from(nbaPlayers)
+        .where(inArray(nbaPlayers.id, kept.map((k) => k.playerId)));
+      const usable = new Set(info.filter((p) => p.active && p.teamId !== null).map((p) => p.id));
+      const stale = kept.filter((k) => !usable.has(k.playerId));
+      if (stale.length) {
+        await tx.delete(keepers).where(and(eq(keepers.leagueId, leagueId), inArray(keepers.playerId, stale.map((k) => k.playerId))));
+      }
+      const valid = kept.filter((k) => usable.has(k.playerId));
+      const room = Math.min(keepersRoom(n, settings), settings.keepers);
+      const perTeam = new Map<string, number>();
+      for (const k of valid) perTeam.set(k.teamId, (perTeam.get(k.teamId) ?? 0) + 1);
+      if ([...perTeam.values()].some((c) => c > room)) throw new DraftError("keepers_invalid");
+      if (valid.length) {
+        await tx.insert(rosterEntries).values(
+          valid.map((k) => ({ leagueId, teamId: k.teamId, playerId: k.playerId, acquiredVia: "keeper" as const, acquiredAt: now })),
+        );
+        await tx.delete(draftQueue).where(inArray(draftQueue.playerId, valid.map((k) => k.playerId)));
+      }
+    }
+    const keeperCounts = await teamKeeperCounts(tx, leagueId, order);
+    const initial = deriveState(cfg, order.map(() => 0), keeperCounts);
 
     let draft: Draft;
     try {
@@ -249,6 +302,14 @@ export async function startDraft(db: Db, leagueId: string, userId: string, deps:
       throw err;
     }
     await tx.update(leagues).set({ status: "drafting" }).where(eq(leagues.id, leagueId));
+    await logActivity(tx, {
+      leagueId,
+      actorUserId: userId,
+      type: "draft_started",
+      summary: `The draft started (${n} teams, ${max} players each).`,
+      data: { url: draftUrl(leagueId) },
+      now,
+    });
     return { draft, league, teamList, settings, initial, cfg };
   });
 
@@ -373,12 +434,13 @@ export async function makePick(
     const settings = parseStoredSettings(league.settings);
     const cfg = configOf(draft, settings.waveSize);
     const counts = await teamPickCounts(tx, draft.id, draft.order);
+    const keeperCounts = await teamKeeperCounts(tx, league.id, draft.order);
     const teamIdx = draft.order.indexOf(teamId);
     if (teamIdx < 0) throw new DraftError("team_not_found");
 
     if (draft.status === "snake") {
       if (snakeTeam(draft.order, draft.currentPick) !== teamId) throw new DraftError("not_your_turn");
-    } else if (counts[teamIdx] >= waveTarget(cfg, draft.currentWave ?? 1)) {
+    } else if (counts[teamIdx] + keeperCounts[teamIdx] >= waveTarget(cfg, draft.currentWave ?? 1)) {
       throw new DraftError("no_wave_quota");
     }
 
@@ -432,9 +494,29 @@ export async function makePick(
     await tx.delete(draftQueue).where(and(eq(draftQueue.playerId, playerId), inArray(draftQueue.teamId, teamList.map((t) => t.id))));
 
     counts[teamIdx] += 1;
-    const next = deriveState(cfg, counts);
+    const next = deriveState(cfg, counts, keeperCounts);
     await tx.update(drafts).set(stateColumns(draft, next, now)).where(eq(drafts.id, draft.id));
     if (next.status === "complete") await tx.update(leagues).set({ status: "in_season" }).where(eq(leagues.id, league.id));
+    if (opts.asCommissioner) {
+      await logActivity(tx, {
+        leagueId: league.id,
+        actorUserId,
+        type: "draft_commissioner_pick",
+        summary: `Commissioner picked ${await playerNameOf(tx, playerId)} for ${team.name} (pick #${overall}).`,
+        data: { teamId, playerId, overallPick: overall, url: draftUrl(league.id) },
+        now,
+      });
+    }
+    if (next.status === "complete") {
+      await logActivity(tx, {
+        leagueId: league.id,
+        actorUserId: null,
+        type: "draft_completed",
+        summary: "The draft is complete and the season has started.",
+        data: { url: draftUrl(league.id) },
+        now,
+      });
+    }
 
     return { pick, next, notices: phaseNotices({
       league,
@@ -477,7 +559,7 @@ export async function undoLastPick(db: Db, draftId: string, actorUserId: string,
       .where(eq(rosterEntries.leagueId, league.id));
     if (draft.status === "complete") {
       // Once the season is underway, rosters may have moved; don't silently rewrite them.
-      const moved = entries.some((e) => e.acquiredVia !== "draft" || e.releasedAt !== null);
+      const moved = entries.some((e) => (e.acquiredVia !== "draft" && e.acquiredVia !== "keeper") || e.releasedAt !== null);
       if (moved || league.status !== "in_season") throw new DraftError("cannot_undo");
     }
 
@@ -497,13 +579,23 @@ export async function undoLastPick(db: Db, draftId: string, actorUserId: string,
     const settings = parseStoredSettings(league.settings);
     const cfg = configOf(draft, settings.waveSize);
     const counts = await teamPickCounts(tx, draft.id, draft.order);
-    const next = deriveState(cfg, counts);
+    const keeperCounts = await teamKeeperCounts(tx, league.id, draft.order);
+    const next = deriveState(cfg, counts, keeperCounts);
     await tx.update(drafts).set(stateColumns(draft, next, now)).where(eq(drafts.id, draft.id));
     if (draft.status === "complete") await tx.update(leagues).set({ status: "drafting" }).where(eq(leagues.id, league.id));
 
     const teamList = await tx.select().from(teams).where(eq(teams.leagueId, league.id));
     const owner = new Map(teamList.map((t) => [t.id, t.ownerId]));
     const [player] = await tx.select({ name: nbaPlayers.fullName }).from(nbaPlayers).where(eq(nbaPlayers.id, last.playerId));
+    const undoneTeam = teamList.find((t) => t.id === last.teamId);
+    await logActivity(tx, {
+      leagueId: league.id,
+      actorUserId,
+      type: "draft_undo",
+      summary: `Commissioner undid pick #${last.overallPick}: ${player?.name ?? "a player"} (${undoneTeam?.name ?? "a team"}).`,
+      data: { teamId: last.teamId, playerId: last.playerId, overallPick: last.overallPick, url: draftUrl(league.id) },
+      now,
+    });
     const notices: NotifyInput[] = [
       {
         userIds: [owner.get(last.teamId)!],
@@ -537,6 +629,65 @@ export async function undoLastPick(db: Db, draftId: string, actorUserId: string,
 
   await sendAll(db, deps.notify, done.notices);
   return done.last;
+}
+
+// --------------------------------------------------------------------------------- restart
+
+/**
+ * Commissioner only, while the draft is in progress (never before it starts or after it is
+ * complete). Deletes every pick and every draft/keeper roster entry, removes the draft row (so the
+ * league is back in setup and "Start draft" works again, with a fresh random order) and sets the
+ * league to setup. Teams' queues and keeper selections are kept; players already drafted are gone
+ * from the queues and stay out of them. The commissioner must type the league name to confirm.
+ */
+export async function restartDraft(
+  db: Db,
+  leagueId: string,
+  actorUserId: string,
+  confirmName: string,
+  deps: DraftDeps = {},
+): Promise<{ picksRemoved: number }> {
+  const now = deps.now ?? new Date();
+  if (!uuidSchema.safeParse(leagueId).success) throw new DraftError("not_found");
+  const done = await db.transaction(async (tx) => {
+    const [league] = await tx.select().from(leagues).where(eq(leagues.id, leagueId)).for("update");
+    if (!league) throw new DraftError("not_found");
+    if (league.commissionerId !== actorUserId) throw new DraftError("forbidden");
+    const [draft] = await tx.select().from(drafts).where(eq(drafts.leagueId, leagueId)).for("update");
+    if (!draft || league.status !== "drafting" || draft.status === "complete" || draft.status === "pending") {
+      throw new DraftError("cannot_restart");
+    }
+    if (confirmName.trim().toLowerCase() !== league.name.trim().toLowerCase()) throw new DraftError("confirm_mismatch");
+
+    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(draftPicks).where(eq(draftPicks.draftId, draft.id));
+    await tx
+      .delete(rosterEntries)
+      .where(and(eq(rosterEntries.leagueId, leagueId), inArray(rosterEntries.acquiredVia, ["draft", "keeper"])));
+    await tx.delete(draftPicks).where(eq(draftPicks.draftId, draft.id));
+    await tx.delete(drafts).where(eq(drafts.id, draft.id));
+    await tx.update(leagues).set({ status: "setup" }).where(eq(leagues.id, leagueId));
+    await logActivity(tx, {
+      leagueId,
+      actorUserId,
+      type: "draft_restart",
+      summary: `Commissioner restarted the draft (${n} pick${n === 1 ? "" : "s"} removed). The league is back in setup.`,
+      data: { picksRemoved: n, url: draftUrl(leagueId) },
+      now,
+    });
+    const teamList = await tx.select().from(teams).where(eq(teams.leagueId, leagueId));
+    return { league, picksRemoved: n, teamList };
+  });
+  await sendAll(db, deps.notify, [
+    {
+      userIds: done.teamList.map((t) => t.ownerId),
+      leagueId,
+      type: "draft_events",
+      title: "Draft restarted",
+      body: `The commissioner restarted the ${done.league.name} draft. All picks were cleared.`,
+      url: draftUrl(leagueId),
+    },
+  ]);
+  return { picksRemoved: done.picksRemoved };
 }
 
 // ------------------------------------------------------------------------------------ queue

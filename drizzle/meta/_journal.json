@@ -36,6 +36,48 @@
       "when": 1791945093421,
       "tag": "0004_draft_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791949782881,
+      "tag": "0005_rosters",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791952250886,
+      "tag": "0006_matchups_standings",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791954119754,
+      "tag": "0007_trades",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791980272792,
+      "tag": "0008_reusable_league_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791986019239,
+      "tag": "0009_playoffs_seasons_keepers",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791989980468,
+      "tag": "0010_social_commissioner",
+      "breakpoints": true
     }
   ]
 }

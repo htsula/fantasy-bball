@@ -5,6 +5,8 @@ const REASONS = {
   used: "This link has already been used.",
   expired: "This link has expired.",
   invalid: "This link isn't valid.",
+  revoked: "This invite link was turned off by the commissioner.",
+  full: "This invite link has reached its maximum number of teams.",
 } as const;
 
 export function InvalidLink({
@@ -19,7 +21,8 @@ export function InvalidLink({
       <CardHeader>
         <CardTitle>{kind === "invite" ? "Invite unavailable" : "Reset link unavailable"}</CardTitle>
         <CardDescription>
-          {REASONS[status === "valid" ? "invalid" : status]} Ask the site admin for a new one.
+          {REASONS[status === "valid" ? "invalid" : status]}{" "}
+          {status === "revoked" || status === "full" ? "Ask your commissioner for a new one." : "Ask the site admin for a new one."}
         </CardDescription>
       </CardHeader>
       <CardContent>

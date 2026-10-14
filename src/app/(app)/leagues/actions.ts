@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { baseUrl } from "@/lib/app-url";
 import { requireUser } from "@/lib/auth/session";
 import type { FormState } from "@/lib/auth/validation";
 import { SCORING_KEYS } from "@/lib/fantasy/settings";
@@ -15,10 +14,10 @@ import {
   generateSchedule,
   joinLeague,
   removeTeam,
+  revokeLeagueInvite,
   renameTeam,
   updateSettings,
 } from "@/lib/leagues/service";
-import type { LinkState } from "../admin/actions";
 
 const str = (formData: FormData, key: string) => String(formData.get(key) ?? "");
 
@@ -52,7 +51,7 @@ const INT_FIELDS = [
   "playoffRoundLength",
   "keepers",
 ] as const;
-const DATE_FIELDS = ["tradeDeadline", "regularSeasonStart", "regularSeasonEnd"] as const;
+const DATE_FIELDS = ["tradeDeadline", "regularSeasonStart", "regularSeasonEnd", "keeperDeadline"] as const;
 
 const num = (v: FormDataEntryValue) => (String(v).trim() === "" ? NaN : Number(v));
 
@@ -90,16 +89,47 @@ export async function updateSettingsAction(leagueId: string, _prev: FormState, f
   return { success: "Settings saved.", values };
 }
 
-export async function createLeagueInviteAction(leagueId: string): Promise<LinkState> {
+export async function createLeagueInviteAction(leagueId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const values = stringValues(formData);
+  const rawMax = str(formData, "maxUses").trim();
+  try {
+    await createLeagueInvite(db, user, leagueId, {
+      maxUses: rawMax === "" ? null : Number(rawMax),
+      revokeOthers: formData.get("revokeOld") !== null,
+    });
+  } catch (err) {
+    return leagueFormError(err, values);
+  }
+  revalidatePath(`/leagues/${leagueId}/invite`);
+  return { success: "New invite link created." };
+}
+
+export type InviteActionState = { error?: string };
+
+export async function revokeLeagueInviteAction(leagueId: string, inviteId: string): Promise<InviteActionState> {
   const user = await requireUser();
   try {
-    const { token, expiresAt } = await createLeagueInvite(db, user, leagueId);
-    revalidatePath(`/leagues/${leagueId}/invite`);
-    return { url: `${await baseUrl()}/invite/${token}`, expiresAt: expiresAt.toISOString() };
+    await revokeLeagueInvite(db, user, leagueId, inviteId);
   } catch (err) {
     if (err instanceof LeagueError) return { error: err.message };
     throw err;
   }
+  revalidatePath(`/leagues/${leagueId}/invite`);
+  return {};
+}
+
+/** Remove-team from the invite page (stays on the page; the team page's action redirects instead). */
+export async function removeInvitedTeamAction(leagueId: string, teamId: string): Promise<InviteActionState> {
+  const user = await requireUser();
+  try {
+    await removeTeam(db, user, teamId);
+  } catch (err) {
+    if (err instanceof LeagueError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath(`/leagues/${leagueId}`, "layout");
+  return {};
 }
 
 export async function joinLeagueAction(token: string, _prev: FormState, formData: FormData): Promise<FormState> {

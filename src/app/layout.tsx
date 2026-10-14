@@ -19,11 +19,19 @@ export const metadata: Metadata = {
   title: "Fantasy Hoops",
   description: "Private fantasy basketball for the group chat",
   appleWebApp: { capable: true, title: "Fantasy Hoops", statusBarStyle: "default" },
+  applicationName: "Fantasy Hoops",
+  formatDetection: { telephone: false },
   icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ea580c",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // lets the installed app use the safe-area insets (see globals.css)
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ea580c" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({

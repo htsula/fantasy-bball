@@ -398,7 +398,9 @@ describe("undoLastPick", () => {
     const queueTeam = draft.order[3];
     await addToQueue(db, queueTeam, fresh(), fx.owner.get(queueTeam)!);
 
-    expect(await code(undoLastPick(db, draft.id, fx.owner.get(draft.order[1])!, deps))).toBe("forbidden");
+    // The order is random, so pick an owner who isn't the commissioner.
+    const nonCommish = draft.order.map((t) => fx.owner.get(t)!).find((u) => u !== admin.id)!;
+    expect(await code(undoLastPick(db, draft.id, nonCommish, deps))).toBe("forbidden");
     const undone = await undoLastPick(db, draft.id, admin.id, deps);
     expect(undone.playerId).toBe(p2);
     expect(await reload(draft.id)).toMatchObject({ status: "snake", currentPick: 2 });

@@ -60,6 +60,7 @@ function LiveBoard({
   const { run, pending } = actions;
   const complete = draft.status === "complete";
   const queuedIds = new Set(board.me.queue.map((p) => p.id));
+  const takenIds = new Set(draft.picks.map((p) => p.player.id));
   const myTeamId = board.viewer.teamId;
 
   return (
@@ -100,6 +101,7 @@ function LiveBoard({
                 <PlayerSearch
                   leagueId={board.leagueId}
                   nbaTeams={nbaTeams}
+                  takenIds={takenIds}
                   actions={(p) => (
                     <>
                       {myTeamId && (

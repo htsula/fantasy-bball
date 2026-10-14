@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { invites, users } from "@/db/schema";
+import { inviteRedemptions, invites, teams, users } from "@/db/schema";
+import { createLeague, createLeagueInvite, redeemLeagueInvite } from "@/lib/leagues/service";
 import type { Db } from "@/db/types";
 import {
   AuthError,
@@ -74,5 +75,40 @@ describe("invite redemption", () => {
     const { token } = await createInvite(db, { createdBy: adminId });
     await expect(redeemInvite(db, form(token, "ROOT"))).rejects.toMatchObject({ code: "username_taken" });
     expect(await getInviteStatus(db, token)).toBe("valid");
+  });
+});
+
+describe("site-level vs league invites", () => {
+  it("site invites stay single-use, hash-only, and expire after 7 days", async () => {
+    const { token, expiresAt } = await createInvite(db, { createdBy: adminId });
+    expect(expiresAt.getTime() - Date.now()).toBeGreaterThan(INVITE_TTL_MS - 60_000);
+    const [row] = await db.select().from(invites).where(eq(invites.tokenHash, hashToken(token)));
+    expect(row).toMatchObject({ token: null, leagueId: null, useCount: 0, revokedAt: null, maxUses: null });
+    await redeemInvite(db, form(token, "site_once"));
+    expect(await getInviteStatus(db, token)).toBe("used");
+    await expect(redeemInvite(db, form(token, "site_twice"))).rejects.toMatchObject({ code: "invalid_token" });
+    const past = new Date(Date.now() - INVITE_TTL_MS - 1000);
+    const old = await createInvite(db, { createdBy: adminId }, past);
+    expect(await getInviteStatus(db, old.token)).toBe("expired");
+  });
+
+  it("league invites are multi-use with no expiry and a stored token", async () => {
+    const commissioner = { id: adminId, isSiteAdmin: true };
+    const league = await createLeague(db, commissioner, { name: "Multi", season: 2027, teamName: "Boss", teamAbbrev: "BOS" });
+    const { token, expiresAt } = await createLeagueInvite(db, commissioner, league.id);
+    expect(expiresAt).toBeNull();
+    const [row] = await db.select().from(invites).where(eq(invites.tokenHash, hashToken(token)));
+    expect(row).toMatchObject({ token, expiresAt: null });
+    for (const i of [1, 2, 3]) {
+      await redeemLeagueInvite(db, {
+        token,
+        username: `multi${i}`,
+        password: "password123",
+        teamName: `Multi ${i}`,
+        teamAbbrev: `M${"ABC"[i - 1]}X`,
+      });
+    }
+    expect((await db.select().from(teams).where(eq(teams.leagueId, league.id)))).toHaveLength(4);
+    expect((await db.select().from(inviteRedemptions).where(eq(inviteRedemptions.inviteId, row.id)))).toHaveLength(3);
   });
 });

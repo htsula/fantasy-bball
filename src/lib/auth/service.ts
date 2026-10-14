@@ -9,7 +9,7 @@ import { hashPassword, verifyPassword } from "./password";
 import { generateToken, hashToken } from "./tokens";
 
 const DAY = 24 * 60 * 60 * 1000;
-export const SESSION_TTL_MS = 30 * DAY;
+export const SESSION_TTL_MS = 400 * DAY; // matches SESSION_MAX_AGE_SECONDS; slides on every visit
 export const INVITE_TTL_MS = 7 * DAY;
 export const RESET_TTL_MS = 1 * DAY;
 export const MAX_FAILED_LOGINS = 5;
@@ -179,7 +179,7 @@ export async function getInviteStatus(db: Db, token: string, now = new Date()): 
   const [invite] = await db.select().from(invites).where(eq(invites.tokenHash, hashToken(token)));
   if (!invite) return "invalid";
   if (invite.usedAt) return "used";
-  if (invite.expiresAt <= now) return "expired";
+  if (invite.expiresAt && invite.expiresAt <= now) return "expired";
   return "valid";
 }
 

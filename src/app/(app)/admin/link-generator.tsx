@@ -47,7 +47,9 @@ export function LinkGenerator({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Single-use. Expires {new Date(state.expiresAt!).toLocaleString()}. Shown only once.
+            {state.expiresAt
+              ? `Single-use. Expires ${new Date(state.expiresAt).toLocaleString()}. Shown only once.`
+              : "Reusable link."}
           </p>
         </div>
       )}

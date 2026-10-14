@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { invites, leagues, matchupPeriods, matchups, nbaGames, teams, users } from "@/db/schema";
+import { inviteRedemptions, invites, leagues, matchupPeriods, matchups, nbaGames, teams, users } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { AuthError, createInvite, createUser } from "@/lib/auth/service";
 import { parseStoredSettings } from "@/lib/fantasy/settings";
@@ -13,11 +13,13 @@ import {
   getLeagueInviteInfo,
   getLeagueView,
   getSchedule,
+  listLeagueInvites,
   joinLeague,
   listLeagues,
   redeemLeagueInvite,
   removeTeam,
   renameTeam,
+  revokeLeagueInvite,
   updateSettings,
   type Actor,
 } from "@/lib/leagues/service";
@@ -185,9 +187,10 @@ describe("invites and teams", () => {
     });
     expect(team).toMatchObject({ leagueId: l.id, ownerId: user.id, abbrev: "NBS" });
     expect((await getLeagueView(db, admin, l.id)).teams.map((t) => t.name)).toEqual(["Commish FC", "Newbies"]);
-    expect((await getLeagueInviteInfo(db, token)).status).toBe("used");
+    // Reusable: the same link still works for the next person.
+    expect((await getLeagueInviteInfo(db, token)).status).toBe("valid");
     const again = { token, username: "again", password: "password123", teamName: "Again", teamAbbrev: "AGN" };
-    expect(await code(redeemLeagueInvite(db, again))).toBe("invalid_invite");
+    expect(await code(redeemLeagueInvite(db, again))).toBe("ok");
   });
 
   it("rolls back the user when the team or username is rejected, keeping the invite", async () => {
@@ -210,7 +213,9 @@ describe("invites and teams", () => {
     const team = await joinLeague(db, u, { token, teamName: "Joiners", teamAbbrev: "JNR" });
     expect(team.ownerId).toBe(u.id);
     const [inv] = await db.select().from(invites).where(eq(invites.leagueId, l.id));
-    expect(inv.usedBy).toBe(u.id);
+    expect(inv.useCount).toBe(1);
+    const [red] = await db.select().from(inviteRedemptions).where(eq(inviteRedemptions.inviteId, inv.id));
+    expect(red).toMatchObject({ userId: u.id, teamId: team.id });
   });
 
   it("allows one team per user per league and unique names/abbrevs (case-insensitive)", async () => {
@@ -243,8 +248,9 @@ describe("invites and teams", () => {
     expect(await code(joinLeague(db, u, { token: site.token, teamName: "Site", teamAbbrev: "STE" }))).toBe("invalid_invite");
     expect(await getLeagueInviteInfo(db, site.token)).toMatchObject({ status: "valid", league: null });
     const l = await league();
-    const past = new Date(Date.now() - 8 * 86_400_000);
-    const old = await createLeagueInvite(db, admin, l.id, past);
+    // League invites do not expire by default, but an explicit expiry is still honored.
+    const old = await createLeagueInvite(db, admin, l.id);
+    await db.update(invites).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(invites.id, old.id));
     expect(await code(joinLeague(db, u, { token: old.token, teamName: "Old", teamAbbrev: "OLD" }))).toBe("invalid_invite");
   });
 
@@ -347,5 +353,115 @@ describe("generateSchedule", () => {
     expect(await code(generateSchedule(db, admin, l.id))).toBe("season_too_short");
     await db.update(leagues).set({ status: "drafting" }).where(eq(leagues.id, l.id));
     expect(await code(generateSchedule(db, admin, l.id))).toBe("wrong_status");
+  });
+});
+
+describe("reusable league invites", () => {
+  const redeem = (token: string, i: number) =>
+    redeemLeagueInvite(db, {
+      token,
+      username: `reuse${++n}`,
+      password: "password123",
+      teamName: `Reuse ${i}`,
+      teamAbbrev: `R${LETTERS[i]}${LETTERS[i]}`,
+    });
+
+  it("lets many different users redeem the same link, recording each use", async () => {
+    const l = await league();
+    const inv = await createLeagueInvite(db, admin, l.id);
+    expect(inv.expiresAt).toBeNull();
+    const a = await redeem(inv.token, 1);
+    const b = await redeem(inv.token, 2);
+    const u = await newUser("logged");
+    const c = await joinLeague(db, u, { token: inv.token, teamName: "Reuse 3", teamAbbrev: "RDD" });
+    expect(new Set([a.user.id, b.user.id, u.id]).size).toBe(3);
+    expect((await getLeagueView(db, admin, l.id)).teams).toHaveLength(4);
+    const [row] = await listLeagueInvites(db, admin, l.id);
+    expect(row).toMatchObject({ useCount: 3, status: "active", token: inv.token });
+    expect(row.members.map((m) => m.teamName)).toEqual(["Reuse 1", "Reuse 2", "Reuse 3"]);
+    expect(c.leagueId).toBe(l.id);
+  });
+
+  it("still rejects duplicate names, abbrevs, usernames and second teams without consuming a use", async () => {
+    const l = await league();
+    const { token } = await createLeagueInvite(db, admin, l.id);
+    const first = await redeem(token, 1); // "Reuse 1" / RBB
+    const base = { token, password: "password123" };
+    expect(await code(redeemLeagueInvite(db, { ...base, username: "dupu1", teamName: "reuse 1", teamAbbrev: "ZZZ" }))).toBe("name_taken");
+    expect(await code(redeemLeagueInvite(db, { ...base, username: "dupu1", teamName: "Fresh", teamAbbrev: "rbb" }))).toBe("abbrev_taken");
+    expect(await code(redeemLeagueInvite(db, { ...base, username: "dupu1", teamName: "Fresh", teamAbbrev: "FRS" }))).toBe("ok");
+    expect(await code(redeemLeagueInvite(db, { ...base, username: "DUPU1", teamName: "Fresh 2", teamAbbrev: "FRT" }))).toBe("username_taken");
+    expect(await code(joinLeague(db, { id: first.user.id, isSiteAdmin: false }, { token, teamName: "Again", teamAbbrev: "AGA" }))).toBe("already_on_team");
+    const [row] = await listLeagueInvites(db, admin, l.id);
+    expect(row.useCount).toBe(2);
+  });
+
+  it("revoking turns the link off and creating a new link revokes the old one by default", async () => {
+    const l = await league();
+    const first = await createLeagueInvite(db, admin, l.id);
+    await redeem(first.token, 1);
+    await revokeLeagueInvite(db, admin, l.id, first.id);
+    expect((await getLeagueInviteInfo(db, first.token)).status).toBe("revoked");
+    expect(await code(redeem(first.token, 2))).toBe("invite_revoked");
+    expect(await code(joinLeague(db, await newUser(), { token: first.token, teamName: "Nope", teamAbbrev: "NOP" }))).toBe("invite_revoked");
+    // Revoking is commissioner-only and scoped to the league.
+    const second = await createLeagueInvite(db, admin, l.id);
+    expect(await code(revokeLeagueInvite(db, outsider, l.id, second.id))).toBe("forbidden");
+    expect(await code(revokeLeagueInvite(db, admin, (await league()).id, second.id))).toBe("not_found");
+    // Default: a new link revokes the old one; opting out keeps both active.
+    const third = await createLeagueInvite(db, admin, l.id);
+    expect((await getLeagueInviteInfo(db, second.token)).status).toBe("revoked");
+    const fourth = await createLeagueInvite(db, admin, l.id, { revokeOthers: false });
+    expect((await getLeagueInviteInfo(db, third.token)).status).toBe("valid");
+    expect((await getLeagueInviteInfo(db, fourth.token)).status).toBe("valid");
+    const statuses = (await listLeagueInvites(db, admin, l.id)).map((i) => i.status);
+    expect(statuses.filter((s) => s === "active")).toHaveLength(2);
+    expect(statuses.filter((s) => s === "revoked")).toHaveLength(2);
+  });
+
+  it("closes the link once the league leaves setup", async () => {
+    const l = await league();
+    const { token } = await createLeagueInvite(db, admin, l.id);
+    await redeem(token, 1);
+    await db.update(leagues).set({ status: "drafting" }).where(eq(leagues.id, l.id));
+    expect(await getLeagueInviteInfo(db, token)).toMatchObject({ status: "valid", league: { status: "drafting" } });
+    expect(await code(redeem(token, 2))).toBe("wrong_status");
+    expect((await listLeagueInvites(db, admin, l.id))[0].status).toBe("closed");
+  });
+
+  it("enforces max_uses (removed teams still count) and validates the value", async () => {
+    const l = await league();
+    expect(await code(createLeagueInvite(db, admin, l.id, { maxUses: 0 }))).toBe("invalid_input");
+    expect(await code(createLeagueInvite(db, admin, l.id, { maxUses: 1.5 }))).toBe("invalid_input");
+    const { token } = await createLeagueInvite(db, admin, l.id, { maxUses: 2 });
+    const a = await redeem(token, 1);
+    await redeem(token, 2);
+    expect((await getLeagueInviteInfo(db, token)).status).toBe("full");
+    expect(await code(redeem(token, 3))).toBe("invite_full");
+    expect(await code(joinLeague(db, await newUser(), { token, teamName: "Late", teamAbbrev: "LTE" }))).toBe("invite_full");
+    expect((await listLeagueInvites(db, admin, l.id))[0]).toMatchObject({ useCount: 2, status: "full" });
+    // Removing a team drops it from the member list but does not free the spot.
+    await removeTeam(db, admin, a.team.id);
+    const [row] = await listLeagueInvites(db, admin, l.id);
+    expect(row.members).toHaveLength(1);
+    expect(await code(redeem(token, 3))).toBe("invite_full");
+  });
+
+  it("lets concurrent redemptions of the same link both succeed", async () => {
+    const l = await league();
+    const { token } = await createLeagueInvite(db, admin, l.id);
+    const results = await Promise.allSettled([redeem(token, 1), redeem(token, 2)]);
+    expect(results.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"]);
+    expect((await listLeagueInvites(db, admin, l.id))[0].useCount).toBe(2);
+    expect((await getLeagueView(db, admin, l.id)).teams).toHaveLength(3);
+  });
+
+  it("never exceeds max_uses under concurrency", async () => {
+    const l = await league();
+    const { token } = await createLeagueInvite(db, admin, l.id, { maxUses: 1 });
+    const results = await Promise.allSettled([redeem(token, 1), redeem(token, 2)]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect((await listLeagueInvites(db, admin, l.id))[0].useCount).toBe(1);
+    expect((await getLeagueView(db, admin, l.id)).teams).toHaveLength(2);
   });
 });
