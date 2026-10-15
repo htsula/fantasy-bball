@@ -54,7 +54,6 @@ test("seeded NBA data: players table, player card game log, scoreboard and admin
   await expect(page.locator("html")).not.toHaveClass(/dark/);
   await page.goto("/players?season=2026&range=7");
   await expect(page.getByLabel("Season", { exact: true })).toHaveValue("2026");
-  await expect(page.getByTestId("season-note")).toContainText("2025-26");
   await expect(page.getByLabel("Time range")).toBeDisabled(); // ranges only apply to the current season
   await expect(page.getByRole("link", { name: /^FP/ }).first()).toHaveAttribute("title", /team-win bonus/);
 

@@ -47,7 +47,11 @@ export default async function MatchupPage({
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xl font-semibold">{label}</h2>
-        <Badge variant={box.matchup.status === "final" ? "secondary" : "outline"} data-testid="matchup-status">
+        <Badge
+          variant={box.matchup.status === "final" ? "secondary" : "outline"}
+          className={statusLabel === "Live" ? "border-transparent bg-live text-live-foreground" : undefined}
+          data-testid="matchup-status"
+        >
           {statusLabel}
         </Badge>
         <span className="text-sm text-muted-foreground">

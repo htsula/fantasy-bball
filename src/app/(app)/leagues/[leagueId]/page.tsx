@@ -5,10 +5,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChatText } from "@/components/chat/chat-text";
-import { waveText } from "@/components/leagues/rules-summary";
 import { listActivity, typeLabel } from "@/lib/activity/service";
 import { latestAnnouncement, listMessages } from "@/lib/chat/service";
-import { maxRoster, snakeRounds } from "@/lib/fantasy/roster-size";
 import { loadLeagueView } from "@/lib/leagues/loaders";
 import { getSchedule } from "@/lib/leagues/service";
 import { periodLabel } from "@/lib/matchups/labels";
@@ -77,13 +75,6 @@ export default async function LeagueHomePage({ params }: { params: Promise<{ lea
           before generating the schedule.
         </p>
       )}
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Teams" value={String(n)} />
-        <Stat label="Max roster" value={String(maxRoster(n, settings))} hint={`min(${settings.rosterCap}, ⌊${settings.rosterPool} ÷ ${n}⌋)`} />
-        <Stat label="Snake rounds" value={String(snakeRounds(n, settings))} />
-        <Stat label="Waves" value={waveText(n, settings)} small />
-      </div>
 
       {announcement && (
         <Card className="border-primary/40 bg-primary/5" data-testid="latest-announcement">
@@ -352,17 +343,5 @@ export default async function LeagueHomePage({ params }: { params: Promise<{ lea
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function Stat({ label, value, hint, small }: { label: string; value: string; hint?: string; small?: boolean }) {
-  return (
-    <Card size="sm">
-      <CardContent className="grid gap-1">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <span className={small ? "text-sm font-semibold" : "text-2xl font-bold tabular-nums"}>{value}</span>
-        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
-      </CardContent>
-    </Card>
   );
 }

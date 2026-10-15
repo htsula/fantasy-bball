@@ -126,7 +126,7 @@ export default async function PlayoffsPage({ params }: { params: Promise<{ leagu
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pt-1 text-xs text-muted-foreground">
                     {slot.status === "tbd" && !slot.bye && <span>Waiting for the previous round</span>}
                     {slot.bye && <span>Advances without playing</span>}
-                    {slot.status === "live" && <Badge variant="outline">Live</Badge>}
+                    {slot.status === "live" && <Badge className="border-transparent bg-live text-live-foreground">Live</Badge>}
                     {slot.status === "final" && <Badge variant="secondary">Final</Badge>}
                     {slot.overridden && (
                       <span title={slot.overrideNote ?? undefined} data-testid="overridden">

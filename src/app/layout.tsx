@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { DEFAULT_THEME, THEME_CLASS_VALUES, THEME_IDS } from "@/lib/themes";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -28,8 +29,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // lets the installed app use the safe-area insets (see globals.css)
-  themeColor: "#ea580c",
-  colorScheme: "light",
+  themeColor: "#00643a",
 };
 
 export default function RootLayout({
@@ -42,8 +42,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-dvh bg-background font-sans text-foreground antialiased`}
       >
-        {/* Light only: the theme is forced, so the `dark` class is never applied whatever the OS prefers. */}
-        <ThemeProvider attribute="class" forcedTheme="light" defaultTheme="light" enableSystem={false}>
+        {/* Selectable color themes (see src/lib/themes.ts + globals.css). Dark themes also get the `dark` class for shadcn `dark:` variants; the OS preference is ignored. */}
+        <ThemeProvider attribute="class" themes={THEME_IDS} value={THEME_CLASS_VALUES} defaultTheme={DEFAULT_THEME} enableSystem={false}>
           {children}
           <Toaster richColors position="top-center" />
           <ServiceWorkerRegister />

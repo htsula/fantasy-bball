@@ -121,11 +121,6 @@ export async function PlayersBrowser({
 
   return (
     <div className="grid gap-4">
-      <p className="text-sm text-muted-foreground" data-testid="season-note">
-        {seasonLabel(result.season)} regular season{result.season === result.currentSeason ? "" : " (last season)"}.{" "}
-        FP includes the +4 team-win bonus (approximated for past games without tip-off snapshots). Proj blends the last 15
-        days (0.6) with the season (0.4) and adds the expected win bonus (team win% x 4, none while Out).
-      </p>
       {!result.seasonHasData && (
         <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground" data-testid="no-stats">
           No {seasonLabel(result.season)} stats loaded yet.

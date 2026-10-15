@@ -70,10 +70,9 @@ test("matchup box score, scoreboard, finalization via cron, standings and result
   await page.getByTestId("period-total-tab").click();
   await expect(row("E2E Starter").getByTestId("fp-cell")).toHaveText("44.0");
 
-  // Mobile: teams stack behind a toggle.
+  // Mobile: both teams side by side.
   await page.setViewportSize({ width: 390, height: 800 });
-  await expect(page.getByTestId("side-home")).toBeVisible();
-  await page.getByTestId("side-away").click();
+  await expect(page.locator('[data-testid="box-home"]')).toBeVisible();
   await expect(page.locator('[data-testid="box-away"]')).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 800 });
 

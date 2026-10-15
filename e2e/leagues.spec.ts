@@ -17,7 +17,6 @@ test("admin creates a league, invites a new user with a team, generates the sche
   await page.getByRole("button", { name: "Create league" }).click();
   await expect(page.getByRole("heading", { name: "E2E League" })).toBeVisible();
   await expect(page.getByTestId("team-row")).toHaveCount(1);
-  await expect(page.getByText("Max roster")).toBeVisible();
 
   // Create a league invite link.
   await page.getByRole("link", { name: "Invite" }).click();

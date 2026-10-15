@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * Mobile pass: every main page on a demo league, at iPhone-ish (390x844) and Android (412x915) sizes in light mode (the
- * app is light only). Saves screenshots to ./screenshots/<project>/ (gitignored) and fails on horizontal page overflow.
+ * default Varsity theme; the theme picker is not exercised). Saves screenshots to ./screenshots/<project>/ (gitignored) and fails on horizontal page overflow.
  * Run: npm run e2e:mobile   (E2E_DEV=1 for `next dev` instead of a production build)
  */
 const PORT = 3101;

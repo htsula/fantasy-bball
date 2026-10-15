@@ -81,7 +81,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ leagu
                               {fmtScore(m.homePoints)} - {fmtScore(m.awayPoints)}
                             </span>
                           )}
-                          {m.status === "live" && <Badge variant="outline" className="ml-2">Live</Badge>}
+                          {m.status === "live" && <Badge className="ml-2 border-transparent bg-live text-live-foreground">Live</Badge>}
                         </span>
                         <span className="flex items-center gap-2">
                           {mine && <Badge variant="outline">You</Badge>}

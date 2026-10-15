@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { LeagueAwareHeader } from "@/components/nav/league-aware-header";
+import { ThemePicker } from "@/components/nav/theme-picker";
 import { ScrollNav, type NavItem } from "@/components/nav/scroll-nav";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/lib/auth/actions";
@@ -19,24 +21,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-b">
-        <div className="mx-auto grid w-full max-w-6xl gap-1 px-4 py-2">
-          <div className="flex items-center justify-between gap-2">
-            <Link href="/" className="inline-flex min-h-10 items-center font-semibold">
-              Fantasy Hoops
-            </Link>
-            <div className="flex items-center gap-1">
-              <NotificationBell initialCount={unread} />
-              <form action={logoutAction}>
-                <Button type="submit" variant="outline" size="sm">
-                  Log out
-                </Button>
-              </form>
+      <LeagueAwareHeader>
+        <header className="border-b">
+          <div className="mx-auto grid w-full max-w-6xl gap-1 px-4 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <Link href="/" className="inline-flex min-h-10 items-center font-semibold">
+                Fantasy Hoops
+              </Link>
+              <div className="flex items-center gap-1">
+                <NotificationBell initialCount={unread} />
+                <ThemePicker />
+                <form action={logoutAction}>
+                  <Button type="submit" variant="outline" size="sm">
+                    Log out
+                  </Button>
+                </form>
+              </div>
             </div>
+            <ScrollNav label="Main" items={items} />
           </div>
-          <ScrollNav label="Main" items={items} />
-        </div>
-      </header>
+        </header>
+      </LeagueAwareHeader>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
     </div>
   );

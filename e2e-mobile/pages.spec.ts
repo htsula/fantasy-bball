@@ -100,6 +100,7 @@ test("every main page fits a phone and looks right", async ({ page, browser }, i
     { name: "matchup", url: matchup },
     { name: "scoreboard", url: `${base}/scoreboard` },
     { name: "nba-scoreboard", url: "/nba/scoreboard?date=2026-03-10" },
+    { name: "league-nba-scoreboard", url: `${base}/nba-scoreboard` },
     { name: "standings", url: `${base}/standings` },
     { name: "schedule", url: `${base}/schedule` },
     { name: "playoffs", url: `${base}/playoffs` },

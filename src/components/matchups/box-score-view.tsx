@@ -43,9 +43,6 @@ export function BoxScoreView({
   myTeamId: string | null;
 }) {
   const [view, setView] = useState<BoxView>(initial.view);
-  const [side, setSide] = useState<"home" | "away">(
-    initial.away && myTeamId === initial.away.teamId ? "away" : "home",
-  );
   const key = `/api/leagues/${leagueId}/matchups/${initial.matchup.id}?view=${view}`;
   const { data, error, isValidating } = useSWR(key, fetcher, {
     fallbackData: view === initial.view ? initial : undefined,
@@ -59,17 +56,6 @@ export function BoxScoreView({
 
   return (
     <div className="grid gap-4" data-testid="box-score" data-view={box.view}>
-      <div className="grid gap-3 md:grid-cols-2">
-        <TeamHeader periodView={box.view === "total"} team={box.home} leagueId={leagueId} winner={box.matchup.winnerTeamId === box.home.teamId} final={box.matchup.status === "final"} testId="home" mine={myTeamId === box.home.teamId} />
-        {box.away ? (
-          <TeamHeader periodView={box.view === "total"} team={box.away} leagueId={leagueId} winner={box.matchup.winnerTeamId === box.away.teamId} final={box.matchup.status === "final"} testId="away" mine={myTeamId === box.away.teamId} />
-        ) : (
-          <Card size="sm">
-            <CardContent className="text-sm text-muted-foreground">Bye week: no opponent, no result this week.</CardContent>
-          </Card>
-        )}
-      </div>
-
       <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="Matchup days">
         <Button
           type="button"
@@ -100,24 +86,25 @@ export function BoxScoreView({
       </nav>
       {error && <p role="alert" className="text-sm text-destructive">Could not refresh: {error.message}</p>}
 
-      {box.away && (
-        <div className="flex gap-1 md:hidden" role="group" aria-label="Team">
-          {(["home", "away"] as const).map((s) => (
-            <Button key={s} type="button" size="sm" variant={side === s ? "secondary" : "outline"} onClick={() => setSide(s)} className="flex-1" data-testid={`side-${s}`}>
-              {(s === "home" ? box.home : box.away!).name}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      <div className={`grid gap-4 md:grid-cols-2 ${loading ? "opacity-60" : ""}`}>
-        <div className={side === "home" ? "" : "hidden md:block"}>
+      <div className={`grid grid-cols-2 gap-2 sm:gap-4 ${loading ? "opacity-60" : ""}`}>
+        <div className="min-w-0">
           <TeamTable team={box.home} periodView={box.view === "total"} testId="home" />
         </div>
         {box.away && (
-          <div className={side === "away" ? "" : "hidden md:block"}>
+          <div className="min-w-0">
             <TeamTable team={box.away} periodView={box.view === "total"} testId="away" />
           </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <TeamHeader periodView={box.view === "total"} team={box.home} leading={!!box.away && box.home.totals.points > box.away.totals.points} leagueId={leagueId} winner={box.matchup.winnerTeamId === box.home.teamId} final={box.matchup.status === "final"} testId="home" mine={myTeamId === box.home.teamId} />
+        {box.away ? (
+          <TeamHeader periodView={box.view === "total"} team={box.away} leading={box.away.totals.points > box.home.totals.points} leagueId={leagueId} winner={box.matchup.winnerTeamId === box.away.teamId} final={box.matchup.status === "final"} testId="away" mine={myTeamId === box.away.teamId} />
+        ) : (
+          <Card size="sm">
+            <CardContent className="text-sm text-muted-foreground">Bye week: no opponent, no result this week.</CardContent>
+          </Card>
         )}
       </div>
       <p className="text-xs text-muted-foreground">
@@ -137,6 +124,7 @@ function TeamHeader({
   final,
   testId,
   mine,
+  leading,
 }: {
   team: BoxTeam;
   periodView: boolean;
@@ -145,22 +133,23 @@ function TeamHeader({
   final: boolean;
   testId: string;
   mine: boolean;
+  leading: boolean;
 }) {
   const t = team.totals;
   return (
-    <Card size="sm" data-testid={`team-header-${testId}`} className={winner ? "ring-2 ring-primary" : undefined}>
+    <Card size="sm" data-testid={`team-header-${testId}`} className={`min-w-0 ${winner ? "ring-2 ring-primary" : ""}`}>
       <CardContent className="grid gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/leagues/${leagueId}/teams/${team.teamId}`} className="font-semibold underline-offset-4 hover:underline">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Link href={`/leagues/${leagueId}/teams/${team.teamId}`} className="min-w-0 break-words font-semibold underline-offset-4 hover:underline">
             {team.name}
           </Link>
           {mine && <Badge variant="outline">You</Badge>}
           {winner && final && <Badge>Winner</Badge>}
         </div>
-        <div className="text-3xl font-bold tabular-nums" data-testid={`team-points-${testId}`}>
+        <div className={`text-2xl font-bold tabular-nums sm:text-3xl ${leading ? "text-primary" : ""}`} data-testid={`team-points-${testId}`}>
           {fmtNum(t.points, 1)}
         </div>
-        <div className="grid grid-cols-2 gap-x-3 text-xs text-muted-foreground sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-x-3 text-xs text-muted-foreground min-[400px]:grid-cols-2 lg:grid-cols-4">
           <span data-testid={`team-projected-${testId}`}>Proj {fmtNum(t.projected, 1)}</span>
           <span data-testid={`team-bonus-${testId}`}>Bonus {fmtNum(t.winBonus, 0)}</span>
           <span data-testid={`team-played-${testId}`}>{t.gamesPlayed} played</span>
@@ -181,6 +170,7 @@ function TeamHeader({
 }
 
 function TeamTable({ team, periodView, testId }: { team: BoxTeam; periodView: boolean; testId: string }) {
+  const footLabel = !periodView ? "Day total" : team.adjustments.length ? "Players" : "Total";
   return (
     <div className="grid gap-1" data-testid={`box-${testId}`}>
       <h3 className="text-sm font-semibold">{team.name}</h3>
@@ -188,7 +178,11 @@ function TeamTable({ team, periodView, testId }: { team: BoxTeam; periodView: bo
         <Table data-sticky-first>
           <TableHeader>
             <TableRow>
-              <TableHead>Player</TableHead>
+              {/* Phones show only Player and FP, so the header row doubles as the team's matchup score. */}
+              <TableHead>
+                <span className="sm:hidden">Total</span>
+                <span className="hidden sm:inline">Player</span>
+              </TableHead>
               <TableHead className="hidden sm:table-cell">{periodView ? "Games" : "Game"}</TableHead>
               <TableHead className="hidden text-right sm:table-cell">MIN</TableHead>
               <TableHead className="hidden text-right sm:table-cell">PTS</TableHead>
@@ -202,7 +196,12 @@ function TeamTable({ team, periodView, testId }: { team: BoxTeam; periodView: bo
               <TableHead className="hidden text-right sm:table-cell">FT</TableHead>
               <TableHead className="hidden text-right sm:table-cell">Stat</TableHead>
               <TableHead className="hidden text-right sm:table-cell">Bonus</TableHead>
-              <TableHead className="text-right">FP</TableHead>
+              <TableHead className="text-right">
+                <span className="font-semibold tabular-nums sm:hidden" data-testid={`table-score-${testId}`}>
+                  {fmtNum(team.totals.points, 1)}
+                </span>
+                <span className="hidden sm:inline">FP</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -220,9 +219,9 @@ function TeamTable({ team, periodView, testId }: { team: BoxTeam; periodView: bo
           <tfoot>
             <TableRow>
               <TableCell colSpan={12} className="hidden font-medium sm:table-cell">
-                {periodView && team.adjustments.length ? "Players" : "Total"}
+                {footLabel}
               </TableCell>
-              <TableCell className="font-medium sm:hidden">{periodView && team.adjustments.length ? "Players" : "Total"}</TableCell>
+              <TableCell className="font-medium sm:hidden">{footLabel}</TableCell>
               <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(team.viewPoints - team.viewWinBonus, 0)}</TableCell>
               <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(team.viewWinBonus, 0)}</TableCell>
               <TableCell className="text-right font-semibold tabular-nums" data-testid={`view-total-${testId}`}>
@@ -269,13 +268,24 @@ function PlayerRow({ p, periodView }: { p: BoxPlayer; periodView: boolean }) {
   const dash = (v: number | undefined) => (l ? String(v) : "-");
   return (
     <TableRow data-testid="player-row" data-player-id={p.playerId} className={!p.rostered && !p.games ? "opacity-60" : undefined}>
-      <TableCell className="font-medium sm:whitespace-nowrap">
-        <Link href={`/players/${p.playerId}`} className="underline-offset-4 hover:underline">
-          {p.name}
-        </Link>{" "}
-        <span className="text-xs font-normal text-muted-foreground">{p.nbaAbbrev}</span>
-        {p.injuryStatus && <span className="ml-1 text-xs text-destructive">{p.injuryStatus}</span>}
-        <div className="text-xs font-normal text-muted-foreground sm:hidden" data-testid="game-line">
+      {/* Phones: always two lines (name, then team / injury / game), truncated so every row is the same height.
+          max-w-0 + w-full lets the cell shrink to the column so truncate can kick in. */}
+      <TableCell className="font-medium max-sm:w-full max-sm:max-w-0 max-sm:text-[13px]">
+        <div className="max-sm:truncate">
+          <Link href={`/players/${p.playerId}`} className="underline-offset-4 hover:underline">
+            {p.name}
+          </Link>
+          <span className="ml-1 hidden text-xs font-normal text-muted-foreground sm:inline">{p.nbaAbbrev}</span>
+          {p.injuryStatus && <span className="ml-1 hidden text-xs text-destructive sm:inline">{p.injuryStatus}</span>}
+        </div>
+        <div
+          className="truncate text-xs font-normal text-muted-foreground sm:hidden"
+          data-testid="game-line"
+          title={periodView ? undefined : gameText(p.game)}
+        >
+          {p.nbaAbbrev}
+          {p.injuryStatus && <span className="ml-1 text-destructive">{p.injuryStatus}</span>}
+          {" · "}
           {periodView ? `${p.games} game${p.games === 1 ? "" : "s"}` : gameText(p.game)}
         </div>
       </TableCell>
