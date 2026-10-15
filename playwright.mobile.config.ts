@@ -2,8 +2,8 @@ import fs from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Mobile pass: every main page on a demo league, at iPhone-ish (390x844) and Android (412x915) sizes in light and
- * dark mode. Saves screenshots to ./screenshots/<project>/ (gitignored) and fails on horizontal page overflow.
+ * Mobile pass: every main page on a demo league, at iPhone-ish (390x844) and Android (412x915) sizes in light mode (the
+ * app is light only). Saves screenshots to ./screenshots/<project>/ (gitignored) and fails on horizontal page overflow.
  * Run: npm run e2e:mobile   (E2E_DEV=1 for `next dev` instead of a production build)
  */
 const PORT = 3101;
@@ -28,9 +28,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   projects: [
     { name: "iphone-light", use: { ...iphone, colorScheme: "light" } },
-    { name: "iphone-dark", use: { ...iphone, colorScheme: "dark" } },
     { name: "android-light", use: { ...android, colorScheme: "light" } },
-    { name: "android-dark", use: { ...android, colorScheme: "dark" } },
   ],
   webServer: {
     command: `npm run db:migrate && npm run db:seed && ${DEV ? `npx next dev -p ${PORT}` : `npx next build && npx next start -p ${PORT}`}`,

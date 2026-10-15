@@ -4,7 +4,7 @@ import type { Db } from "@/db/types";
 import { DEFAULT_SCORING } from "@/lib/fantasy/settings";
 import { DEFAULT_DRAFT_SORT, listDraftablePlayers } from "@/lib/draft/board";
 import { loadLastSeasonFp } from "@/lib/fantasy/last-season";
-import { calendarSeason, currentSeason, loadSeasonFantasy, previousSeason, resolveSeason } from "@/lib/fantasy/stats-query";
+import { calendarSeason, currentSeason, loadSeasonFantasy, openingNight, previousSeason, resolveSeason } from "@/lib/fantasy/stats-query";
 import { getPlayerCard, listPlayers } from "@/lib/nba/players-query";
 import { parsePlayerParams } from "@/lib/nba/player-params";
 import { updateSettings } from "@/lib/leagues/service";
@@ -58,6 +58,13 @@ beforeAll(async () => {
     homeScore: 100, awayScore: 90, status: "final",
   });
   await box(9004, 101, 1, { pts: 99 });
+  // A preseason game (type 1) of the previous season and of the upcoming one: never counted either.
+  await db.insert(nbaGames).values([
+    { id: 9005, season: 2026, seasonType: 1, startTime: new Date("2025-10-05T00:00:00Z"), homeTeamId: 1, awayTeamId: 2, homeScore: 100, awayScore: 90, status: "final" },
+    { id: 9006, season: 2027, seasonType: 1, startTime: new Date("2026-10-05T00:00:00Z"), homeTeamId: 1, awayTeamId: 2, homeScore: 100, awayScore: 90, status: "final" },
+  ]);
+  await box(9005, 101, 1, { pts: 77 });
+  await box(9006, 101, 1, { pts: 66 });
   // Upcoming 2027 schedule (no final games).
   await game(9100, 2027, "2026-10-21T23:00:00Z", 1, 2, null, "scheduled");
 });
@@ -71,13 +78,18 @@ describe("season helpers", () => {
     expect(previousSeason(2027)).toBe(2026);
   });
 
-  it("preseason: previous season is the default and the only option with data", async () => {
+  it("preseason: both seasons are offered, the previous one is the default and the only one with data", async () => {
     const c = await resolveSeason(db, NOW);
-    expect(c).toMatchObject({ current: 2027, previous: 2026, options: [2026], default: 2026, selected: 2026 });
-    // The current season has no data, so asking for it falls back to the default.
-    expect((await resolveSeason(db, NOW, 2027)).selected).toBe(2026);
+    expect(c).toMatchObject({ current: 2027, previous: 2026, options: [2027, 2026], withData: [2026], default: 2026, selected: 2026 });
+    // The current season is selectable even without data.
+    expect((await resolveSeason(db, NOW, 2027)).selected).toBe(2027);
     // Seasons other than current/previous are not offered.
     expect((await resolveSeason(db, NOW, 2025)).selected).toBe(2026);
+  });
+
+  it("finds the opening night of a season (null without a schedule)", async () => {
+    expect((await openingNight(db, 2027))?.toISOString()).toBe("2026-10-21T23:00:00.000Z");
+    expect(await openingNight(db, 2030)).toBeNull();
   });
 });
 
@@ -113,12 +125,21 @@ describe("loadSeasonFantasy", () => {
 describe("Players table and player card", () => {
   it("defaults to the previous season in the preseason and locks the ranges", async () => {
     const res = await listPlayers(db, { now: NOW, range: "7" });
-    expect(res).toMatchObject({ season: 2026, seasons: [2026], currentSeason: 2027, range: "season", rangeLocked: true });
+    expect(res).toMatchObject({ season: 2026, seasons: [2027, 2026], seasonHasData: true, currentSeason: 2027, range: "season", rangeLocked: true });
     const a = res.rows.find((r) => r.id === 101)!;
     expect(a).toMatchObject({ gp: 2, fpTotal: 44, fpAvg: 22 });
-    // An explicit season that has data works; one that has none falls back.
+    // Both seasons can be selected; the one without data is flagged and lists players without stats.
     expect((await listPlayers(db, { now: NOW, season: 2026 })).season).toBe(2026);
-    expect((await listPlayers(db, { now: NOW, season: 2027 })).season).toBe(2026);
+    const empty = await listPlayers(db, { now: NOW, season: 2027, range: "7" });
+    expect(empty).toMatchObject({ season: 2027, seasons: [2027, 2026], seasonHasData: false, rangeLocked: false });
+    expect(empty.rows).toHaveLength(6);
+    expect(empty.rows.every((r) => r.fpTotal === null && r.gp === 0)).toBe(true);
+    // Anything else falls back to the default.
+    expect((await listPlayers(db, { now: NOW, season: 2025 })).season).toBe(2026);
+  });
+
+  it("ignores a leftover pos param", () => {
+    expect("pos" in parsePlayerParams({ pos: "C" })).toBe(false);
   });
 
   it("uses league scoring in a league context", async () => {
@@ -146,62 +167,87 @@ describe("Players table and player card", () => {
     expect(card.bySeason[1]).toMatchObject({ gp: 2, totalFp: 44, bonusFp: 4, fpAvg: 22, minAvg: 30 });
     expect(card.bySeason[2]).toMatchObject({ gp: 1, totalFp: 11, bonusFp: 4 });
     expect(card.logSeason).toBe(2026);
-    expect(card.gameLog.map((g) => g.gameId).sort()).toEqual([9001, 9002, 9004]);
+    expect(card.gameLog.map((g) => g.gameId).sort()).toEqual([9001, 9002]); // the playoff game 9004 is not in the log
     const old = (await getPlayerCard(db, 101, NOW, { logSeason: 2025 }))!;
     expect(old.logSeason).toBe(2026); // 2025 is not an offered season
   });
 });
 
 describe("listDraftablePlayers default order", () => {
-  it("sorts by previous-season total FP descending, ties by projection, then the rest", async () => {
+  it("defaults to the previous season, sorted by its total FP descending, ties by projection, then the rest", async () => {
     const admin = await createAdmin(db);
     const fx = await setupLeague(db, admin, 2, {});
-    const res = await listDraftablePlayers(db, fx.league.id, { limit: 200 });
+    const res = await listDraftablePlayers(db, fx.league.id, { limit: 200, now: NOW });
     expect(res.sort).toBe(DEFAULT_DRAFT_SORT);
+    expect(DEFAULT_DRAFT_SORT).toBe("fp");
     expect(res.dir).toBe("desc");
+    expect(res).toMatchObject({ season: 2026, seasons: [2027, 2026], defaultSeason: 2026 });
     const ids = res.players.map((p) => p.id);
     // A 44; E and C tie on 39 (E projects higher); D 25; B 4; F has no last season and goes last.
     expect(ids).toEqual([101, 105, 103, 104, 102, 106]);
     const a = res.players[0];
-    expect(a).toMatchObject({ lastFp: 44, lastAvg: 22, lastGp: 2, curAvg: null });
-    expect(res.players[5]).toMatchObject({ lastFp: null, lastAvg: null });
+    expect(a).toMatchObject({ fp: 44, fpAvg: 22, lastFp: 44, lastAvg: 22, lastGp: 2, curAvg: null, curFp: null });
+    expect(res.players[5]).toMatchObject({ fp: null, fpAvg: null, lastFp: null, lastAvg: null });
+  });
+
+  it("the Stats toggle switches the season behind FP and the sort; unknown seasons mean the default", async () => {
+    const admin = await createAdmin(db);
+    const fx = await setupLeague(db, admin, 2, {});
+    const cur = await listDraftablePlayers(db, fx.league.id, { limit: 200, now: NOW, season: 2027 });
+    expect(cur.season).toBe(2027);
+    expect(cur.players.every((p) => p.fp === null && p.fpAvg === null)).toBe(true);
+    // Nothing to sort by yet: everybody ties, so the projection order decides.
+    expect(cur.players[0].id).toBe(105);
+    const prev = await listDraftablePlayers(db, fx.league.id, { limit: 200, now: NOW, season: 2026 });
+    expect(prev.players[0]).toMatchObject({ id: 101, fp: 44 });
+    expect((await listDraftablePlayers(db, fx.league.id, { limit: 200, now: NOW, season: 1999 })).season).toBe(2026);
+    // A leftover pos param is not part of the contract any more.
+    const withPos = await listDraftablePlayers(db, fx.league.id, { limit: 200, now: NOW, pos: "C" } as never);
+    expect(withPos.total).toBe(6);
   });
 
   it("supports other sort keys and directions with nulls last", async () => {
     const admin = await createAdmin(db);
     const fx = await setupLeague(db, admin, 2, {});
-    const byAvg = await listDraftablePlayers(db, fx.league.id, { sort: "lastavg", limit: 200 });
+    const byAvg = await listDraftablePlayers(db, fx.league.id, { sort: "fpavg", limit: 200, now: NOW });
     expect(byAvg.players.map((p) => p.id)).toEqual([105, 104, 101, 103, 102, 106]);
-    const asc = await listDraftablePlayers(db, fx.league.id, { sort: "lastfp", dir: "asc", limit: 200 });
+    const asc = await listDraftablePlayers(db, fx.league.id, { sort: "fp", dir: "asc", limit: 200, now: NOW });
     expect(asc.players.map((p) => p.id)).toEqual([102, 104, 105, 103, 101, 106]);
-    const name = await listDraftablePlayers(db, fx.league.id, { sort: "name", limit: 200 });
+    const name = await listDraftablePlayers(db, fx.league.id, { sort: "name", limit: 200, now: NOW });
     expect(name.players.map((p) => p.name)).toEqual(["Alpha A", "Bravo B", "Charlie C", "Delta D", "Echo E", "Foxtrot F"]);
-    const bogus = await listDraftablePlayers(db, fx.league.id, { sort: "nope" as never, limit: 200 });
-    expect(bogus.sort).toBe("lastfp");
+    const bogus = await listDraftablePlayers(db, fx.league.id, { sort: "nope" as never, limit: 200, now: NOW });
+    expect(bogus.sort).toBe("fp");
   });
 
   it("uses the league's scoring for last-season FP", async () => {
     const admin = await createAdmin(db);
     const fx = await setupLeague(db, admin, 2, { scoring: { ...DEFAULT_SCORING, pts: 2, teamWin: 10 } });
-    const res = await listDraftablePlayers(db, fx.league.id, { limit: 200 });
-    expect(res.players.find((p) => p.id === 101)).toMatchObject({ lastFp: 80, lastAvg: 40 });
+    const res = await listDraftablePlayers(db, fx.league.id, { limit: 200, now: NOW });
+    expect(res.players.find((p) => p.id === 101)).toMatchObject({ fp: 80, fpAvg: 40, lastFp: 80, lastAvg: 40 });
     // Paging keeps the order.
-    const page2 = await listDraftablePlayers(db, fx.league.id, { limit: 2, offset: 2 });
+    const page2 = await listDraftablePlayers(db, fx.league.id, { limit: 2, offset: 2, now: NOW });
     expect(page2.players.map((p) => p.id)).toEqual(res.players.slice(2, 4).map((p) => p.id));
   });
 });
 
 describe("once the new season has a final game", () => {
+  it("keeps defaulting to the previous season until the first week is over", async () => {
+    const sunday = new Date("2026-10-26T03:59:59Z"); // Sunday 23:59:59 EDT, opening night was Wed Oct 21
+    const monday = new Date("2026-10-26T04:00:00Z");
+    expect((await resolveSeason(db, sunday)).default).toBe(2026);
+    expect((await resolveSeason(db, monday)).default).toBe(2027);
+  });
+
   it("defaults to the current season, offers both, and unlocks the ranges", async () => {
     await db.insert(nbaGames).values({
       id: 9101, season: 2027, seasonType: 2, startTime: new Date("2026-10-22T00:00:00Z"), homeTeamId: 1, awayTeamId: 2,
       homeScore: 100, awayScore: 99, status: "final",
     });
     await box(9101, 101, 1, { pts: 12 });
-    const c = await resolveSeason(db, new Date("2026-10-25T00:00:00Z"));
-    expect(c).toMatchObject({ current: 2027, options: [2027, 2026], default: 2027, selected: 2027 });
-    expect((await resolveSeason(db, new Date("2026-10-25T00:00:00Z"), 2026)).selected).toBe(2026);
-    const now = new Date("2026-10-25T00:00:00Z");
+    const now = new Date("2026-10-27T00:00:00Z");
+    const c = await resolveSeason(db, now);
+    expect(c).toMatchObject({ current: 2027, options: [2027, 2026], withData: [2027, 2026], default: 2027, selected: 2027 });
+    expect((await resolveSeason(db, now, 2026)).selected).toBe(2026);
     const cur = await listPlayers(db, { now });
     expect(cur).toMatchObject({ season: 2027, rangeLocked: false });
     expect(cur.rows.find((r) => r.id === 101)).toMatchObject({ gp: 1, fpTotal: 16 });
@@ -210,5 +256,34 @@ describe("once the new season has a final game", () => {
     const last = await listPlayers(db, { now, season: 2026, range: "7" });
     expect(last).toMatchObject({ season: 2026, rangeLocked: true, range: "season" });
     expect(last.rows.find((r) => r.id === 101)!.fpTotal).toBe(44);
+  });
+
+  it("the draft list then defaults to the league season and sorts by its FP", async () => {
+    const admin = await createAdmin(db);
+    const fx = await setupLeague(db, admin, 2, {});
+    const now = new Date("2026-10-27T00:00:00Z");
+    const res = await listDraftablePlayers(db, fx.league.id, { limit: 200, now });
+    expect(res).toMatchObject({ season: 2027, defaultSeason: 2027, sort: "fp" });
+    expect(res.players[0]).toMatchObject({ id: 101, fp: 16, curFp: 16, lastFp: 44 });
+    const prev = await listDraftablePlayers(db, fx.league.id, { limit: 200, now, season: 2026 });
+    expect(prev.players[0]).toMatchObject({ id: 101, fp: 44 });
+    // Same data, but before the first week ended: previous season.
+    expect((await listDraftablePlayers(db, fx.league.id, { limit: 1, now: new Date("2026-10-25T00:00:00Z") })).season).toBe(2026);
+  });
+});
+
+describe("regular season only", () => {
+  it("leaves playoff and preseason games out of season totals, the game log and the draft list", async () => {
+    // Player 101 also has playoff (99 pts) and preseason (77, 66 pts) lines; none of them count.
+    const m = new Map((await loadSeasonFantasy(db, { seasons: [2026, 2027], playerIds: [101] })).map((r) => [r.season, r]));
+    expect(m.get(2026)).toMatchObject({ gp: 2, totalFp: 44 });
+    const card = (await getPlayerCard(db, 101, new Date("2026-10-14T15:00:00Z")))!;
+    expect(card.gameLog.map((g) => g.gameId)).not.toContain(9004);
+    expect(card.gameLog.map((g) => g.gameId)).not.toContain(9005);
+    expect(card.gameLog.map((g) => g.gameId)).not.toContain(9006);
+    const admin = await createAdmin(db);
+    const fx = await setupLeague(db, admin, 2, {});
+    const res = await listDraftablePlayers(db, fx.league.id, { limit: 200, now: new Date("2026-10-14T15:00:00Z") });
+    expect(res.players.find((p) => p.id === 101)).toMatchObject({ lastFp: 44, curFp: 16 });
   });
 });

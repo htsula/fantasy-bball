@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { buttonVariants } from "@/components/ui/button";
+import { seasonChoiceFor } from "@/lib/fantasy/stats-query";
 import { TradeBuilder } from "@/components/trades/trade-builder";
 import { loadLeagueView } from "@/lib/leagues/loaders";
 import { fmtYmd } from "@/lib/nba/format";
@@ -71,6 +72,7 @@ export default async function NewTradePage({
 
   const others = view.teams.filter((t) => t.id !== myTeam.id);
   const partner = others.find((t) => t.id === partnerId) ?? null;
+  const seasonInfo = await seasonChoiceFor(db, league.season, new Date());
   const [myRoster, theirRoster, max] = await Promise.all([
     listRosterForTrade(db, league, myTeam.id),
     partner ? listRosterForTrade(db, league, partner.id) : Promise.resolve([]),
@@ -101,6 +103,7 @@ export default async function NewTradePage({
         initialGet={initialGet.filter((id) => theirIds.has(id))}
         initialMessage={message}
         counterOf={counterOf}
+        seasons={{ current: seasonInfo.current, previous: seasonInfo.previous, default: seasonInfo.default }}
       />
     </div>
   );

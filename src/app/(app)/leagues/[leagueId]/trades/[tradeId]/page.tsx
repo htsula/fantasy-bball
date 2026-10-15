@@ -6,6 +6,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Countdown } from "@/components/trades/countdown";
 import { TradeActions } from "@/components/trades/trade-actions";
+import { StatsSeasonNav } from "@/components/stats-season-nav";
+import { seasonChoiceFor } from "@/lib/fantasy/stats-query";
 import { TradePlayerTable } from "@/components/trades/player-table";
 import { loadLeagueView } from "@/lib/leagues/loaders";
 import { fmtEtDateTime } from "@/lib/nba/format";
@@ -14,8 +16,15 @@ import { getTrade, processDueTrades } from "@/lib/trades/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function TradeDetailPage({ params }: { params: Promise<{ leagueId: string; tradeId: string }> }) {
+export default async function TradeDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ leagueId: string; tradeId: string }>;
+  searchParams: Promise<{ season?: string }>;
+}) {
   const { leagueId, tradeId } = await params;
+  const { season: seasonParam } = await searchParams;
   const { user, view } = await loadLeagueView(leagueId);
   const now = new Date();
   await processDueTrades(db, now, {}, { leagueId });
@@ -41,6 +50,7 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ le
     myTeamId: myTeam?.id ?? null,
   };
 
+  const seasonInfo = await seasonChoiceFor(db, view.league.season, now, Number(seasonParam) || null);
   const give = detail.players.filter((p) => p.fromTeamId === trade.proposer.id);
   const get = detail.players.filter((p) => p.fromTeamId === trade.receiver.id);
 
@@ -122,18 +132,19 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ le
         </Card>
       )}
 
+      <StatsSeasonNav base={`${base}/${trade.id}`} seasons={seasonInfo.options} selected={seasonInfo.selected} defaultSeason={seasonInfo.default} />
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="grid gap-2" aria-label={`${trade.proposer.name} gives`}>
           <h3 className="text-sm font-semibold">
             {trade.proposer.name} gives <span className="font-normal text-muted-foreground">(to {trade.receiver.name})</span>
           </h3>
-          <TradePlayerTable players={give} testId="give-table" />
+          <TradePlayerTable players={give} testId="give-table" season={seasonInfo.selected} seasons={seasonInfo} />
         </section>
         <section className="grid gap-2" aria-label={`${trade.receiver.name} gives`}>
           <h3 className="text-sm font-semibold">
             {trade.receiver.name} gives <span className="font-normal text-muted-foreground">(to {trade.proposer.name})</span>
           </h3>
-          <TradePlayerTable players={get} testId="get-table" />
+          <TradePlayerTable players={get} testId="get-table" season={seasonInfo.selected} seasons={seasonInfo} />
         </section>
       </div>
 

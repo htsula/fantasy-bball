@@ -128,11 +128,6 @@
     @apply font-sans;
     color-scheme: light;
   }
-  /* Tell the browser the page is dark so native controls (the open <select> list,
-     date pickers, scrollbars) render dark instead of white-on-white. */
-  html.dark {
-    color-scheme: dark;
-  }
   /* Option lists are drawn by the browser; give them explicit theme colors too. */
   select option,
   select optgroup {

@@ -20,7 +20,7 @@ export default async function LeaguePlayersPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { leagueId } = await params;
-  const { view } = await loadLeagueView(leagueId);
+  const { user, view } = await loadLeagueView(leagueId);
   const query = parsePlayerParams(await searchParams);
   const { league, settings, myTeam } = view;
   const open = league.status === "in_season" || league.status === "playoffs";
@@ -71,6 +71,7 @@ export default async function LeaguePlayersPage({
         basePath={basePath}
         params={query}
         league={{ id: leagueId }}
+        isAdmin={user.isSiteAdmin}
         renderAction={
           myTeam && open && adds
             ? (row) =>

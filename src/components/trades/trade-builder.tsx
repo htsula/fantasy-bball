@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { fmtNum } from "@/lib/nba/format";
+import { fmtNum, seasonLabel } from "@/lib/nba/format";
 import type { TradePlayer } from "@/lib/trades/service";
 
 type TeamOpt = { id: string; name: string };
@@ -21,25 +21,30 @@ function Picker({
   selected,
   onToggle,
   testId,
+  useCurrent,
+  statsLabel,
 }: {
   title: string;
   players: TradePlayer[];
   selected: Set<number>;
   onToggle: (id: number) => void;
   testId: string;
+  /** Show the current season's FP columns (else the previous season's). */
+  useCurrent: boolean;
+  statsLabel: string;
 }) {
   const [q, setQ] = useState("");
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return players;
-    return players.filter((p) => `${p.name} ${p.nbaAbbrev ?? ""} ${p.positions.join(" ")}`.toLowerCase().includes(needle));
+    return players.filter((p) => `${p.name} ${p.nbaAbbrev ?? ""}`.toLowerCase().includes(needle));
   }, [players, q]);
   return (
     <Card size="sm" data-testid={testId}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{selected.size} selected</CardDescription>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, team or position" aria-label={`Search ${title}`} />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or team" aria-label={`Search ${title}`} />
       </CardHeader>
       <CardContent>
         <ul className="grid max-h-96 gap-1 overflow-y-auto pr-1">
@@ -63,15 +68,11 @@ function Picker({
                     {p.nbaAbbrev ?? "FA"} &middot; {p.positions.join("/") || "-"}
                   </span>
                 </span>
-                <span className="grid shrink-0 grid-cols-4 gap-2 text-right text-xs tabular-nums">
-                  <span title="Last season: fantasy points per game and total (win bonus included)">
-                    <span className="block text-muted-foreground">Last</span>
-                    {fmtNum(p.lastAvg)}
-                    <span className="block text-muted-foreground">{fmtNum(p.lastFp, 0)} FP</span>
-                  </span>
-                  <span title="Fantasy points per game this season">
+                <span className="grid shrink-0 grid-cols-3 gap-2 text-right text-xs tabular-nums">
+                  <span title={`${statsLabel}: fantasy points per game and total (win bonus included)`}>
                     <span className="block text-muted-foreground">FP/G</span>
-                    {fmtNum(p.seasonAvg)}
+                    {fmtNum(useCurrent ? p.curAvg : p.lastAvg)}
+                    <span className="block text-muted-foreground">{fmtNum(useCurrent ? p.curFp : p.lastFp, 0)} FP</span>
                   </span>
                   <span title="Projected fantasy points per game">
                     <span className="block text-muted-foreground">Proj</span>
@@ -103,6 +104,7 @@ export function TradeBuilder({
   initialGet,
   initialMessage,
   counterOf,
+  seasons,
 }: {
   leagueId: string;
   myTeam: TeamOpt;
@@ -116,12 +118,16 @@ export function TradeBuilder({
   initialMessage: string;
   /** Set when this is a counteroffer: the trade being answered. */
   counterOf: string | null;
+  /** Stats seasons for the FP columns: the league season, the one before it and the default. */
+  seasons: { current: number; previous: number; default: number };
 }) {
   const router = useRouter();
   const [give, setGive] = useState(() => new Set(initialGive));
   const [get, setGet] = useState(() => new Set(initialGet));
   const [message, setMessage] = useState(initialMessage);
   const [error, setError] = useState<string | null>(null);
+  const [statsSeason, setStatsSeason] = useState(seasons.default);
+  const statsLabel = seasonLabel(statsSeason);
   const [pending, start] = useTransition();
 
   const toggle = (set: Set<number>, setter: (s: Set<number>) => void) => (id: number) => {
@@ -182,9 +188,37 @@ export function TradeBuilder({
 
       {partner && (
         <>
+          <div className="grid gap-1 sm:max-w-xs">
+            <label htmlFor="stats-season" className="text-sm font-medium">
+              Stats season
+            </label>
+            <NativeSelect id="stats-season" value={statsSeason} onChange={(e) => setStatsSeason(Number(e.target.value))} data-testid="stats-season">
+              {[seasons.previous, seasons.current].map((sn) => (
+                <option key={sn} value={sn}>
+                  Stats: {seasonLabel(sn)}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <Picker title={`You give (${myTeam.name})`} players={myRoster} selected={give} onToggle={toggle(give, setGive)} testId="give-picker" />
-            <Picker title={`You get (${partner.name})`} players={theirRoster} selected={get} onToggle={toggle(get, setGet)} testId="get-picker" />
+            <Picker
+              title={`You give (${myTeam.name})`}
+              players={myRoster}
+              selected={give}
+              onToggle={toggle(give, setGive)}
+              testId="give-picker"
+              useCurrent={statsSeason === seasons.current}
+              statsLabel={statsLabel}
+            />
+            <Picker
+              title={`You get (${partner.name})`}
+              players={theirRoster}
+              selected={get}
+              onToggle={toggle(get, setGet)}
+              testId="get-picker"
+              useCurrent={statsSeason === seasons.current}
+              statsLabel={statsLabel}
+            />
           </div>
 
           <Card size="sm" data-testid="trade-summary">

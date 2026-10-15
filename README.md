@@ -14,7 +14,7 @@ Status: feature complete (milestones 1-10), tuned for ~10-16 friends on phones u
 - **Trades**: offers/counters, commissioner review or league veto vote, trade block.
 - **Live scoring**: ESPN data synced by cron, live matchup page with box scores, scoreboard, projections.
 - **Social**: league chat with @mentions and pinned announcements, activity log, in-app notifications and Web Push.
-- **PWA**: installable, offline notice page, safe-area aware, works in light and dark mode.
+- **PWA**: installable, offline notice page, safe-area aware, light theme only.
 
 ## Local setup
 
@@ -77,7 +77,7 @@ $env:DATABASE_URL='...'; npm run create-admin -- --username yourname --reset
 | `npm run lint`, `npm run typecheck` | ESLint, `tsc --noEmit` |
 | `npm test` | Vitest (in-memory PGlite, migrations applied per test file) |
 | `npm run e2e` | Playwright suite against a **production build** (`next build` + `next start` on :3100, throwaway PGlite DB). `E2E_DEV=1 npm run e2e` uses `next dev` instead. Both share `.next`, so stop your dev server first. First time: `npx playwright install chromium` |
-| `npm run e2e:mobile` | Mobile pass on the demo data: every main page at 390x844 (iPhone-ish) and 412x915 (Android), light and dark; fails on sideways page overflow and saves screenshots to `./screenshots/<device>-<scheme>/` (gitignored) |
+| `npm run e2e:mobile` | Mobile pass on the demo data: every main page at 390x844 (iPhone-ish) and 412x915 (Android), light mode; fails on sideways page overflow and saves screenshots to `./screenshots/<device>-light/` (gitignored) |
 | `npm run db:generate` | Generate a SQL migration into `drizzle/` after editing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations (PGlite or Postgres, depending on `DATABASE_URL`) |
 | `npm run db:studio` | Drizzle Studio |

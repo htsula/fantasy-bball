@@ -1,11 +1,26 @@
 import Link from "next/link";
 import { InjuryBadge } from "@/components/nba/injury-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fmtNum } from "@/lib/nba/format";
+import { fmtNum, seasonLabel } from "@/lib/nba/format";
 import type { TradePlayer } from "@/lib/trades/service";
 
-/** Read-only list of players in a trade with the numbers that matter for a decision. */
-export function TradePlayerTable({ players, testId }: { players: TradePlayer[]; testId?: string }) {
+/**
+ * Read-only list of players in a trade with the numbers that matter for a decision. FP/G and FP
+ * are those of `season`, one of the two the page offers (`seasons.current` / `seasons.previous`).
+ */
+export function TradePlayerTable({
+  players,
+  testId,
+  season,
+  seasons,
+}: {
+  players: TradePlayer[];
+  testId?: string;
+  season: number;
+  seasons: { current: number };
+}) {
+  const useCurrent = season === seasons.current;
+  const label = seasonLabel(season);
   if (players.length === 0) return <p className="text-sm text-muted-foreground">No players.</p>;
   const total = players.reduce((s, p) => s + (p.projection ?? 0), 0);
   return (
@@ -16,9 +31,8 @@ export function TradePlayerTable({ players, testId }: { players: TradePlayer[]; 
             <TableHead>Player</TableHead>
             <TableHead className="hidden sm:table-cell">NBA</TableHead>
             <TableHead className="hidden sm:table-cell">Pos</TableHead>
-            <TableHead className="hidden text-right sm:table-cell" title="Fantasy points per game last season (win bonus included)">Last FP/G</TableHead>
-            <TableHead className="hidden text-right sm:table-cell" title="Total fantasy points last season (win bonus included)">Last FP</TableHead>
-            <TableHead className="text-right">FP/G</TableHead>
+            <TableHead className="text-right" title={`Fantasy points per game in ${label} (win bonus included)`}>FP/G</TableHead>
+            <TableHead className="hidden text-right sm:table-cell" title={`Total fantasy points in ${label} (win bonus included)`}>FP</TableHead>
             <TableHead className="text-right">Proj</TableHead>
             <TableHead className="hidden text-right sm:table-cell">Win bonus/G</TableHead>
           </TableRow>
@@ -37,15 +51,14 @@ export function TradePlayerTable({ players, testId }: { players: TradePlayer[]; 
               </TableCell>
               <TableCell className="hidden sm:table-cell">{p.nbaAbbrev ?? "-"}</TableCell>
               <TableCell className="hidden sm:table-cell">{p.positions.join("/") || "-"}</TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.lastAvg)}</TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.lastFp, 0)}</TableCell>
-              <TableCell className="text-right tabular-nums">{fmtNum(p.seasonAvg)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmtNum(useCurrent ? p.curAvg : p.lastAvg)}</TableCell>
+              <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(useCurrent ? p.curFp : p.lastFp, 0)}</TableCell>
               <TableCell className="text-right tabular-nums">{fmtNum(p.projection)}</TableCell>
               <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.winBonusPerGame)}</TableCell>
             </TableRow>
           ))}
           <TableRow>
-            <TableCell colSpan={6} className="hidden text-right text-xs text-muted-foreground sm:table-cell">
+            <TableCell colSpan={5} className="hidden text-right text-xs text-muted-foreground sm:table-cell">
               Total projected FP/G
             </TableCell>
             <TableCell colSpan={2} className="text-right text-xs text-muted-foreground sm:hidden">

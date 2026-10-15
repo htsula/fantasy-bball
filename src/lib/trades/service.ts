@@ -37,7 +37,7 @@ import {
 } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { logActivity, type ActivityType } from "@/lib/activity/service";
-import { loadLastSeasonFp } from "@/lib/fantasy/last-season";
+import { loadSeasonFantasy } from "@/lib/fantasy/stats-query";
 import { loadProjections } from "@/lib/fantasy/projections";
 import { parseStoredSettings, type LeagueSettings } from "@/lib/fantasy/settings";
 import { etDateString } from "@/lib/nba/dates";
@@ -1161,6 +1161,9 @@ export type TradePlayer = {
   /** Previous season (league season - 1): FP per game and total, win bonus and league scoring included. */
   lastAvg: number | null;
   lastFp: number | null;
+  /** Current season (league season): FP per game and total, win bonus and league scoring included. */
+  curAvg: number | null;
+  curFp: number | null;
   /** Projected FP per game (includes the expected win bonus). */
   projection: number | null;
   /** Expected win-bonus FP per game (0 when Out). */
@@ -1183,13 +1186,17 @@ export async function loadTradePlayers(db: Db, playerIds: number[], league: Leag
     .from(nbaPlayers)
     .leftJoin(nbaTeams, eq(nbaTeams.id, nbaPlayers.teamId))
     .where(inArray(nbaPlayers.id, playerIds));
-  const [proj, last] = await Promise.all([
+  const [proj, seasonRows] = await Promise.all([
     loadProjections(db, { playerIds, now, teamWin: scoring.teamWin, points: scoring }),
-    loadLastSeasonFp(db, { season: league.season - 1, playerIds, scoring }),
+    loadSeasonFantasy(db, { seasons: [league.season, league.season - 1], playerIds, points: scoring, teamWin: scoring.teamWin }),
   ]);
+  const bySeason = (season: number) => new Map(seasonRows.filter((r) => r.season === season).map((r) => [r.playerId, r]));
+  const last = bySeason(league.season - 1);
+  const cur = bySeason(league.season);
   for (const r of rows) {
     const p = proj.get(r.id);
     const l = last.get(r.id);
+    const c = cur.get(r.id);
     out.set(r.id, {
       playerId: r.id,
       name: r.name,
@@ -1198,8 +1205,10 @@ export async function loadTradePlayers(db: Db, playerIds: number[], league: Leag
       injuryStatus: r.injuryStatus,
       injuryDetail: r.injuryDetail,
       seasonAvg: p?.seasonAvg ?? null,
-      lastAvg: l?.avg ?? null,
-      lastFp: l?.total ?? null,
+      lastAvg: l?.fpAvg ?? null,
+      lastFp: l && l.fgp > 0 ? l.totalFp : null,
+      curAvg: c?.fpAvg ?? null,
+      curFp: c && c.fgp > 0 ? c.totalFp : null,
       projection: p?.projection ?? null,
       winBonusPerGame: p?.winBonusPerGame ?? 0,
     });

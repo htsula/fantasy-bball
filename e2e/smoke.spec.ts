@@ -48,6 +48,10 @@ test("seeded NBA data: players table, player card game log, scoreboard and admin
   await expect(page.getByRole("link", { name: "Admin" })).toBeVisible();
   // The season selector shows which season the table is on (the fixtures hold 2025-26 plus a few seeded 2026-27 games).
   await expect(page.getByLabel("Season", { exact: true })).toHaveValue(/^202[67]$/);
+  // Both the current and the previous season are always offered, and there is no position filter or dark mode.
+  await expect(page.getByLabel("Season", { exact: true }).locator("option")).toHaveText(["Season: 2026-27", "Season: 2025-26"]);
+  await expect(page.getByLabel("Position")).toHaveCount(0);
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
   await page.goto("/players?season=2026&range=7");
   await expect(page.getByLabel("Season", { exact: true })).toHaveValue("2026");
   await expect(page.getByTestId("season-note")).toContainText("2025-26");

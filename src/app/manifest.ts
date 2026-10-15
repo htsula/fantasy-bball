@@ -10,7 +10,6 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     categories: ["sports", "games"],
-    // The manifest has a single color pair; the <meta name="theme-color"> tags in layout.tsx cover dark mode.
     background_color: "#ffffff",
     theme_color: "#ea580c",
     icons: [

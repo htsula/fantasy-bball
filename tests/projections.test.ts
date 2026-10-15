@@ -9,6 +9,7 @@ import {
   projectTotal,
 } from "@/lib/fantasy/projections";
 import { getPlayerCard, listPlayers, PAGE_SIZE } from "@/lib/nba/players-query";
+import { parsePlayerParams } from "@/lib/nba/player-params";
 import type { GameRow, PlayerRow, StatRow } from "@/lib/nba/normalize";
 import { applyInjuries, upsertGames, upsertPlayers, upsertStats, upsertTeams } from "@/lib/nba/sync";
 import { createTestDb } from "./helpers/db";
@@ -181,6 +182,20 @@ describe("loadGamesRemaining", () => {
     expect(rem.get(1)).toEqual({ week: 2, season: 3 });
     expect(rem.get(2)).toEqual({ week: 2, season: 3 });
   });
+
+  it("ignores preseason, play-in and playoff games, also inside the current week", async () => {
+    await upsertGames(
+      db,
+      [
+        game(2101, "2026-03-20T23:00:00Z", "scheduled", { seasonType: 1 }),
+        game(2102, "2026-03-21T23:00:00Z", "scheduled", { seasonType: 3 }),
+        game(2103, "2026-03-21T23:30:00Z", "scheduled", { seasonType: 5 }),
+      ],
+      NOW,
+    );
+    const rem = await loadGamesRemaining(db, NOW);
+    expect(rem.get(1)).toEqual({ week: 2, season: 3 });
+  });
 });
 
 describe("listPlayers", () => {
@@ -218,21 +233,22 @@ describe("listPlayers", () => {
     expect(week.proj).toBeCloseTo(39.2);
   });
 
-  it("filters by position, team, injury and health, and searches by name", async () => {
+  it("filters by team, injury and health, and searches by name (there is no position filter)", async () => {
     await applyInjuries(
       db,
       [{ playerId: 102, teamId: 1, status: "Out", detail: "Knee", shortComment: "s", longComment: "l", date: NOW }],
       NOW,
     );
     const names = async (p: Parameters<typeof listPlayers>[1]) => (await listPlayers(db, { now: NOW, ...p })).rows.map((r) => r.fullName);
-    expect(await names({ pos: "C" })).toEqual(["Charlie Big"]);
-    expect(await names({ pos: "SG" })).toEqual(["Alpha Guard"]);
     expect(await names({ team: 2 })).toEqual(["Charlie Big"]);
     expect(await names({ inj: "out" })).toEqual(["Bravo Wing"]);
     expect(await names({ healthy: true })).toEqual(["Alpha Guard", "Charlie Big"]);
     expect(await names({ q: "wing" })).toEqual(["Bravo Wing"]);
     expect(await names({ q: "%" })).toEqual([]); // wildcard is escaped, not matched
-    expect(await names({ pos: "XX" })).toHaveLength(3); // unknown position ignored
+    // A leftover ?pos= in the URL is tolerated but does nothing.
+    const parsed = parsePlayerParams({ pos: "C" });
+    expect("pos" in parsed).toBe(false);
+    expect(await names({ ...parsed, healthy: false })).toHaveLength(3);
   });
 
   it("sorts by any column in either direction", async () => {

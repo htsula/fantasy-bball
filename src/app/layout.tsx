@@ -28,10 +28,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // lets the installed app use the safe-area insets (see globals.css)
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ea580c" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
+  themeColor: "#ea580c",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -44,8 +42,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-dvh bg-background font-sans text-foreground antialiased`}
       >
-        {/* Dark mode follows the OS setting via the `dark` class. */}
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        {/* Light only: the theme is forced, so the `dark` class is never applied whatever the OS prefers. */}
+        <ThemeProvider attribute="class" forcedTheme="light" defaultTheme="light" enableSystem={false}>
           {children}
           <Toaster richColors position="top-center" />
           <ServiceWorkerRegister />

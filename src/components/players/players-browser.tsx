@@ -20,7 +20,6 @@ import {
   listFilterOptions,
   listPlayers,
 } from "@/lib/nba/players-query";
-import { FANTASY_POSITIONS } from "@/lib/nba/positions";
 
 export { parsePlayerParams, playerParamsSchema, type PlayerParams };
 
@@ -57,6 +56,7 @@ export async function PlayersBrowser({
   params,
   league,
   renderAction,
+  isAdmin = false,
 }: {
   basePath: string;
   params: PlayerParams;
@@ -64,6 +64,8 @@ export async function PlayersBrowser({
   league?: { id: string };
   /** League mode: the Add button (or similar) for a row. */
   renderAction?: (row: Row) => React.ReactNode;
+  /** Site admins get a hint on how to load missing stats. */
+  isAdmin?: boolean;
 }) {
   const [result, options] = await Promise.all([
     listPlayers(db, {
@@ -76,7 +78,7 @@ export async function PlayersBrowser({
 
   const href = (over: Partial<Record<string, string | number | undefined>>) => {
     const next: Record<string, string | number | undefined> = {
-      q: params.q, pos: params.pos, team: params.team, inj: params.inj, healthy: params.healthy,
+      q: params.q, team: params.team, inj: params.inj, healthy: params.healthy,
       range: result.range === "season" ? undefined : result.range,
       season: params.season,
       sort: params.sort === "fptotal" ? undefined : params.sort,
@@ -120,10 +122,21 @@ export async function PlayersBrowser({
   return (
     <div className="grid gap-4">
       <p className="text-sm text-muted-foreground" data-testid="season-note">
-        {result.season ? `${seasonLabel(result.season)} regular season${result.season === result.currentSeason ? "" : " (last season)"}. ` : "No game data yet. "}
+        {seasonLabel(result.season)} regular season{result.season === result.currentSeason ? "" : " (last season)"}.{" "}
         FP includes the +4 team-win bonus (approximated for past games without tip-off snapshots). Proj blends the last 15
         days (0.6) with the season (0.4) and adds the expected win bonus (team win% x 4, none while Out).
       </p>
+      {!result.seasonHasData && (
+        <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground" data-testid="no-stats">
+          No {seasonLabel(result.season)} stats loaded yet.
+          {isAdmin && (
+            <>
+              {" "}
+              Admin: run <code className="rounded bg-muted px-1">npm run sync:daily -- --season {result.season}</code> once, or Admin → Data sync.
+            </>
+          )}
+        </p>
+      )}
       <SortSelect value={params.sort} options={sortOptions} />
       <form method="get" action={basePath} className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Player filters">
         <Input name="q" defaultValue={params.q} placeholder="Search name" aria-label="Search name" className="sm:col-span-3 lg:col-span-2" />
@@ -136,12 +149,6 @@ export async function PlayersBrowser({
             ))}
           </NativeSelect>
         )}
-        <NativeSelect name="pos" defaultValue={params.pos ?? ""} aria-label="Position">
-          <option value="">All positions</option>
-          {FANTASY_POSITIONS.map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </NativeSelect>
         <NativeSelect name="team" defaultValue={params.team ?? ""} aria-label="NBA team">
           <option value="">All teams</option>
           {options.teams.map((t) => (
@@ -154,8 +161,7 @@ export async function PlayersBrowser({
             <option key={s} value={s}>{s}</option>
           ))}
         </NativeSelect>
-        <NativeSelect name="season" defaultValue={result.season ?? ""} aria-label="Season">
-          {result.seasons.length === 0 && <option value="">No data</option>}
+        <NativeSelect name="season" defaultValue={result.season} aria-label="Season">
           {result.seasons.map((sn) => (
             <option key={sn} value={sn}>
               Season: {seasonLabel(sn)}

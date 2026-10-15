@@ -20,7 +20,6 @@ import {
   projectionSql,
   resolveSeason,
 } from "@/lib/fantasy/stats-query";
-import { FANTASY_POSITIONS } from "./positions";
 
 export const RANGES = ["season", "7", "15", "30"] as const;
 export type Range = (typeof RANGES)[number];
@@ -33,15 +32,14 @@ export type SortKey = (typeof SORT_KEYS)[number];
 
 export type PlayerListParams = {
   q?: string;
-  pos?: string;
   team?: number;
   inj?: string;
   healthy?: boolean;
   range?: Range;
   /**
-   * Regular season to show (ESPN end year). Only the current and previous season are offered, and
-   * only when they have data; anything else falls back to the default (current season once it has
-   * a final game, else the previous one). Ranges apply to the current season only.
+   * Regular season to show (ESPN end year). The current and previous season are always offered;
+   * anything else falls back to the default (the previous season until the first week of the current
+   * one has ended, see defaultStatsSeason). Ranges apply to the current season only.
    */
   season?: number;
   sort?: SortKey;
@@ -67,7 +65,7 @@ const escapeLike = (v: string) => v.replace(/[\\%_]/g, (c) => `\\${c}`);
 export async function listPlayers(db: Db, params: PlayerListParams) {
   const now = params.now ?? new Date();
   const choice = await resolveSeason(db, now, params.season);
-  const season = choice.selected ?? 0;
+  const season = choice.selected;
   // 7/15/30-day ranges look back from now, so they only make sense for the current season.
   const rangeLocked = season !== choice.current;
   const range = rangeLocked ? "season" : (params.range ?? "season");
@@ -82,7 +80,6 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
 
   const where: (SQL | undefined)[] = [eq(p.active, true)];
   if (params.q?.trim()) where.push(ilike(p.fullName, `%${escapeLike(params.q.trim())}%`));
-  if ((FANTASY_POSITIONS as readonly string[]).includes(params.pos ?? "")) where.push(sql`${params.pos} = any(${p.positions})`);
   if (params.team) where.push(eq(p.teamId, params.team));
   if (params.healthy) where.push(isNull(p.injuryStatus));
   else if (params.inj) where.push(sql`lower(${p.injuryStatus}) = lower(${params.inj})`);
@@ -162,8 +159,10 @@ export async function listPlayers(db: Db, params: PlayerListParams) {
   ]);
 
   return {
-    season: season || null,
+    season,
     seasons: choice.options,
+    /** False when the selected season has no final game loaded yet. */
+    seasonHasData: choice.withData.includes(season),
     currentSeason: choice.current,
     range,
     rangeLocked,
@@ -227,8 +226,10 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date(), 
   const { player, team } = row;
 
   const choice = await resolveSeason(db, now);
-  const season = choice.default;
-  const logSeason = opts.logSeason !== undefined && choice.options.includes(opts.logSeason) ? opts.logSeason : season;
+  // The card only offers seasons that have games.
+  const cardSeasons = choice.withData.length > 0 ? choice.withData : choice.options;
+  const season = cardSeasons.includes(choice.default) ? choice.default : cardSeasons[0];
+  const logSeason = opts.logSeason !== undefined && cardSeasons.includes(opts.logSeason) ? opts.logSeason : season;
   const teams = new Map((await db.select().from(nbaTeams)).map((t) => [t.id, t]));
 
   const [injury] = await db.select().from(nbaInjuries).where(eq(nbaInjuries.playerId, playerId));
@@ -264,7 +265,7 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date(), 
     .select({ stat: s, game: nbaGames })
     .from(s)
     .innerJoin(nbaGames, eq(nbaGames.id, s.gameId))
-    .where(and(eq(s.playerId, playerId), logSeason !== null ? eq(nbaGames.season, logSeason) : undefined))
+    .where(and(eq(s.playerId, playerId), eq(nbaGames.seasonType, 2), logSeason !== null ? eq(nbaGames.season, logSeason) : undefined))
     .orderBy(desc(nbaGames.startTime))
     .limit(30);
   const gameLog = logRows.map(({ stat, game }) => {
@@ -335,7 +336,7 @@ export async function getPlayerCard(db: Db, playerId: number, now = new Date(), 
     injury: injury ?? null,
     season,
     logSeason,
-    logSeasons: choice.options,
+    logSeasons: cardSeasons,
     bySeason,
     averages,
     gameLog,

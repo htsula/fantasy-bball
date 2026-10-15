@@ -2,9 +2,9 @@
 import { and, asc, desc, eq, gte, isNull, lt, ne, sql } from "drizzle-orm";
 import { leagues, nbaGames, nbaPlayers, nbaTeams, rosterEntries, teams } from "@/db/schema";
 import type { Db } from "@/db/types";
-import { loadLastSeasonFp } from "@/lib/fantasy/last-season";
 import { loadProjections } from "@/lib/fantasy/projections";
 import { parseStoredSettings } from "@/lib/fantasy/settings";
+import { loadSeasonFantasy, seasonChoiceFor, type SeasonChoice } from "@/lib/fantasy/stats-query";
 import { playerPointsForTeam, sumPoints } from "@/lib/fantasy/team-points";
 import { addDays, etDateString, etDayRange, etWeekRange } from "@/lib/nba/dates";
 import { leagueMaxRoster } from "./service";
@@ -29,10 +29,9 @@ export type RosterRow = {
   positions: string[];
   injuryStatus: string | null;
   injuryDetail: string | null;
-  seasonAvg: number | null;
-  /** Previous season (league season - 1) FP per game and total, league scoring and win bonus included. */
-  lastAvg: number | null;
-  lastFp: number | null;
+  /** FP per game and total in the selected stats season, league scoring and win bonus included. */
+  fpAvg: number | null;
+  fpTotal: number | null;
   recentAvg: number | null;
   projection: number | null;
   /** What he earned for THIS fantasy team in the selected range. */
@@ -52,6 +51,8 @@ export type NbaGroup = {
 };
 
 export type TeamRosterView = {
+  /** Selected stats season and the seasons on offer (see seasonChoiceFor). */
+  seasons: SeasonChoice;
   range: TeamRange;
   count: number;
   max: number;
@@ -69,14 +70,16 @@ export function rangeFromDate(range: TeamRange, now: Date): string | null {
 
 export async function loadTeamRoster(
   db: Db,
-  input: { leagueId: string; teamId: string; range?: TeamRange; now?: Date },
+  input: { leagueId: string; teamId: string; range?: TeamRange; now?: Date; season?: number | null },
 ): Promise<TeamRosterView> {
   const now = input.now ?? new Date();
-  const range = input.range ?? "season";
   const [league] = await db.select().from(leagues).where(eq(leagues.id, input.leagueId));
   const [team] = await db.select().from(teams).where(and(eq(teams.id, input.teamId), eq(teams.leagueId, input.leagueId)));
   if (!league || !team) throw new Error("team not found");
   const settings = parseStoredSettings(league.settings);
+  const seasons = await seasonChoiceFor(db, league.season, now, input.season);
+  // 7/15/30-day ranges look back from today, so they only apply to the current season.
+  const range = seasons.selected === seasons.current ? (input.range ?? "season") : "season";
 
   const entries = await db
     .select({
@@ -97,14 +100,17 @@ export async function loadTeamRoster(
   const today = etDateString(now);
   const from = rangeFromDate(range, now);
 
-  const [max, projections, lastSeason, points, nbaTeamRows] = await Promise.all([
+  const [max, projections, seasonRows, points, nbaTeamRows] = await Promise.all([
     leagueMaxRoster(db, league),
     playerIds.length ? loadProjections(db, { playerIds, now, teamWin: settings.scoring.teamWin, points: settings.scoring }) : new Map(),
-    playerIds.length ? loadLastSeasonFp(db, { season: league.season - 1, playerIds, scoring: settings.scoring }) : new Map(),
+    playerIds.length
+      ? loadSeasonFantasy(db, { seasons: [seasons.selected], playerIds, points: settings.scoring, teamWin: settings.scoring.teamWin })
+      : [],
     playerPointsForTeam(db, team.id, from, today),
     nbaTeamIds.length ? db.select().from(nbaTeams) : Promise.resolve([]),
   ]);
   const nbaTeamById = new Map(nbaTeamRows.map((t) => [t.id, t]));
+  const seasonFp = new Map(seasonRows.map((r) => [r.playerId, r]));
 
   // Records, this week's game counts and today's games for the NBA teams on this roster.
   const records = new Map<number, string>();
@@ -163,7 +169,7 @@ export async function loadTeamRoster(
   for (const e of entries) {
     const proj = projections.get(e.playerId);
     const pts = points.get(e.playerId);
-    const last = lastSeason.get(e.playerId);
+    const stat = seasonFp.get(e.playerId);
     const nbaTeam = e.nbaTeamId !== null ? nbaTeamById.get(e.nbaTeamId) : undefined;
     const group =
       groups.get(e.nbaTeamId) ??
@@ -181,9 +187,8 @@ export async function loadTeamRoster(
       positions: e.positions,
       injuryStatus: e.injuryStatus,
       injuryDetail: e.injuryDetail,
-      seasonAvg: proj?.seasonAvg ?? null,
-      lastAvg: last?.avg ?? null,
-      lastFp: last?.total ?? null,
+      fpAvg: stat?.fpAvg ?? null,
+      fpTotal: stat && stat.fgp > 0 ? stat.totalFp : null,
       recentAvg: proj?.recentAvg ?? null,
       projection: proj?.projection ?? null,
       games: pts?.games ?? 0,
@@ -194,9 +199,10 @@ export async function loadTeamRoster(
     groups.set(e.nbaTeamId, group);
   }
   const list = [...groups.values()].sort((a, b) => a.abbrev.localeCompare(b.abbrev));
-  for (const g of list) g.rows.sort((a, b) => (b.seasonAvg ?? -1) - (a.seasonAvg ?? -1) || a.name.localeCompare(b.name));
+  for (const g of list) g.rows.sort((a, b) => (b.fpAvg ?? -1) - (a.fpAvg ?? -1) || a.name.localeCompare(b.name));
 
   return {
+    seasons,
     range,
     count: entries.length,
     max,

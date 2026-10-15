@@ -8,12 +8,12 @@ export default async function PlayersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const params = parsePlayerParams(await searchParams);
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold tracking-tight">Players</h1>
-      <PlayersBrowser basePath="/players" params={params} />
+      <PlayersBrowser basePath="/players" params={params} isAdmin={user.isSiteAdmin} />
     </div>
   );
 }

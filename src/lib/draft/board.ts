@@ -6,10 +6,9 @@ import { and, asc, desc, eq, ilike, inArray, isNull, sql, type SQL } from "drizz
 import { draftPicks, draftQueue, keepers, leagues, matchups, nbaPlayers, nbaTeams, rosterEntries, teams, users } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { loadProjections } from "@/lib/fantasy/projections";
-import { loadSeasonFantasy, type SeasonFantasyRow } from "@/lib/fantasy/stats-query";
+import { loadSeasonFantasy, seasonChoiceFor, type SeasonFantasyRow } from "@/lib/fantasy/stats-query";
 import { maxRoster, snakeRounds as computeSnakeRounds, waves as computeWaves } from "@/lib/fantasy/roster-size";
 import { parseStoredSettings } from "@/lib/fantasy/settings";
-import { FANTASY_POSITIONS } from "@/lib/nba/positions";
 import {
   pickInRound,
   snakeRoundOf,
@@ -35,6 +34,8 @@ export type BoardPlayer = {
   proj: number | null;
   /** Current-season (league season) FP per game with league scoring, null before opening night. */
   curAvg: number | null;
+  /** Current-season total fantasy points (league scoring, win bonus included), null before opening night. */
+  curFp: number | null;
   /** Previous-season (league season - 1) total fantasy points, win bonus and league scoring included. */
   lastFp: number | null;
   /** Previous-season FP per game (per game he scored in). */
@@ -43,9 +44,13 @@ export type BoardPlayer = {
   lastGp: number | null;
 };
 
-export const DRAFT_SORT_KEYS = ["lastfp", "lastavg", "curavg", "proj", "name"] as const;
+/** fp / fpavg sort by the selected stats season (the Stats toggle). */
+export const DRAFT_SORT_KEYS = ["fp", "fpavg", "proj", "name"] as const;
 export type DraftSortKey = (typeof DRAFT_SORT_KEYS)[number];
-export const DEFAULT_DRAFT_SORT: DraftSortKey = "lastfp";
+export const DEFAULT_DRAFT_SORT: DraftSortKey = "fp";
+
+/** A draftable player with the FP columns of the selected stats season. */
+export type DraftListPlayer = BoardPlayer & { fp: number | null; fpAvg: number | null };
 
 type LeagueRow = typeof leagues.$inferSelect;
 
@@ -66,6 +71,10 @@ async function loadSeasonStats(db: Db, league: LeagueRow, playerIds?: number[]) 
       avg: p?.seasonAvg ?? null,
       proj: p?.projection ?? null,
       curAvg: cur.get(id)?.fpAvg ?? null,
+      curFp: (() => {
+        const c = cur.get(id);
+        return c && c.fgp > 0 ? c.totalFp : null;
+      })(),
       lastFp: l && l.fgp > 0 ? l.totalFp : null,
       lastAvg: l?.fpAvg ?? null,
       lastGp: l ? l.gp : null,
@@ -175,14 +184,36 @@ function compareNullable(a: number | null, b: number | null, sign: 1 | -1): numb
 }
 
 /**
- * Players still draftable in this league. Default order: previous-season total fantasy points
- * (league scoring, win bonus included) descending, ties by projection, then name.
+ * Players still draftable in this league. FP columns reflect the selected stats season: the league
+ * season or the one before it; by default the previous one until the league season has been running
+ * for a week (defaultStatsSeason). Default order: that season's total fantasy points (league scoring,
+ * win bonus included) descending, ties by projection, then name.
  */
 export async function listDraftablePlayers(
   db: Db,
   leagueId: string,
-  params: { q?: string; pos?: string; team?: number; limit?: number; offset?: number; sort?: DraftSortKey; dir?: "asc" | "desc" } = {},
-): Promise<{ total: number; players: BoardPlayer[]; sort: DraftSortKey; dir: "asc" | "desc" }> {
+  params: {
+    q?: string;
+    team?: number;
+    limit?: number;
+    offset?: number;
+    sort?: DraftSortKey;
+    dir?: "asc" | "desc";
+    /** Stats season (league season or league season - 1); anything else means the default. */
+    season?: number;
+    now?: Date;
+  } = {},
+): Promise<{
+  total: number;
+  players: DraftListPlayer[];
+  sort: DraftSortKey;
+  dir: "asc" | "desc";
+  /** The stats season the FP columns show. */
+  season: number;
+  /** Offered stats seasons, newest first. */
+  seasons: number[];
+  defaultSeason: number;
+}> {
   const [league] = await db.select().from(leagues).where(eq(leagues.id, leagueId));
   if (!league) throw new DraftError("not_found");
   const sort: DraftSortKey = (DRAFT_SORT_KEYS as readonly string[]).includes(params.sort ?? "") ? params.sort! : DEFAULT_DRAFT_SORT;
@@ -194,10 +225,9 @@ export async function listDraftablePlayers(
   ];
   const q = params.q?.trim();
   if (q) where.push(ilike(nbaPlayers.fullName, `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`));
-  if ((FANTASY_POSITIONS as readonly string[]).includes(params.pos ?? "")) where.push(sql`${params.pos} = any(${nbaPlayers.positions})`);
   if (params.team) where.push(eq(nbaPlayers.teamId, params.team));
 
-  const [rows, statsOf] = await Promise.all([
+  const [rows, statsOf, choice] = await Promise.all([
     db
       .select({
         id: nbaPlayers.id,
@@ -211,13 +241,17 @@ export async function listDraftablePlayers(
       .leftJoin(nbaTeams, eq(nbaTeams.id, nbaPlayers.teamId))
       .where(and(...where)),
     loadSeasonStats(db, league),
+    seasonChoiceFor(db, league.season, params.now ?? new Date(), params.season),
   ]);
-  const players: BoardPlayer[] = rows.map((r) => ({ ...r, ...statsOf(r.id) }));
+  const useCurrent = choice.selected === league.season;
+  const players: DraftListPlayer[] = rows.map((r) => {
+    const stats = statsOf(r.id);
+    return { ...r, ...stats, fp: useCurrent ? stats.curFp : stats.lastFp, fpAvg: useCurrent ? stats.curAvg : stats.lastAvg };
+  });
   const sign = dir === "asc" ? 1 : -1;
-  const keys: Record<Exclude<DraftSortKey, "name">, (p: BoardPlayer) => number | null> = {
-    lastfp: (p) => p.lastFp,
-    lastavg: (p) => p.lastAvg,
-    curavg: (p) => p.curAvg,
+  const keys: Record<Exclude<DraftSortKey, "name">, (p: DraftListPlayer) => number | null> = {
+    fp: (p) => p.fp,
+    fpavg: (p) => p.fpAvg,
     proj: (p) => p.proj,
   };
   players.sort((a, b) => {
@@ -228,7 +262,15 @@ export async function listDraftablePlayers(
   });
   const offset = Math.max(0, params.offset ?? 0);
   const limit = Math.min(200, Math.max(1, params.limit ?? 50));
-  return { total: players.length, players: players.slice(offset, offset + limit), sort, dir };
+  return {
+    total: players.length,
+    players: players.slice(offset, offset + limit),
+    sort,
+    dir,
+    season: choice.selected,
+    seasons: choice.options,
+    defaultSeason: choice.default,
+  };
 }
 
 export async function getDraftBoard(db: Db, leagueId: string, viewerUserId: string): Promise<DraftBoard> {

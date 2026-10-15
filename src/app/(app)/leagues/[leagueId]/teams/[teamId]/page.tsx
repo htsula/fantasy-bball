@@ -7,6 +7,7 @@ import { CommissionerAddPlayer, DropButton } from "@/components/rosters/roster-c
 import { BlockToggle } from "@/components/trades/block-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { StatsSeasonNav } from "@/components/stats-season-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { loadLeagueView } from "@/lib/leagues/loaders";
@@ -41,21 +42,24 @@ export default async function TeamPage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string; teamId: string }>;
-  searchParams: Promise<{ error?: string; range?: string }>;
+  searchParams: Promise<{ error?: string; range?: string; season?: string }>;
 }) {
   const { leagueId, teamId } = await params;
-  const { error, range: rangeParam } = await searchParams;
+  const { error, range: rangeParam, season: seasonParam } = await searchParams;
   const { user, view } = await loadLeagueView(leagueId);
   const team = view.teams.find((t) => t.id === teamId);
   if (!team) notFound();
-  const range = (TEAM_RANGES as readonly string[]).includes(rangeParam ?? "") ? (rangeParam as TeamRange) : "season";
+  const requestedRange = (TEAM_RANGES as readonly string[]).includes(rangeParam ?? "") ? (rangeParam as TeamRange) : "season";
   const isOwner = team.ownerId === user.id;
   const canEdit = isOwner || view.isCommissioner;
   const open = view.league.status === "in_season" || view.league.status === "playoffs";
   const canRemove = view.isCommissioner && view.league.status === "setup" && team.ownerId !== view.league.commissionerId;
 
   if (open) await ensureFreshLive(db);
-  const roster = await loadTeamRoster(db, { leagueId, teamId: team.id, range });
+  const roster = await loadTeamRoster(db, { leagueId, teamId: team.id, range: requestedRange, season: Number(seasonParam) || null });
+  const seasonInfo = roster.seasons;
+  const range = roster.range;
+  const rangesOn = seasonInfo.selected === seasonInfo.current;
   const blockEntries = await listTradeBlock(db, view.league, { teamId: team.id });
   const blockById = new Map(blockEntries.map((b) => [b.playerId, b]));
   const tradingOpen = view.league.status === "in_season" && !isPastTradeDeadline(view.settings.tradeDeadline, new Date());
@@ -129,18 +133,28 @@ export default async function TeamPage({
                 : "No players on this roster."
               : "Grouped by NBA team: every player scores every day, and a win by his team adds the bonus unless he is Out at tip-off. Positions are informational."}
           </CardDescription>
-          <nav className="flex flex-wrap gap-1 pt-1" aria-label="Time range">
-            {TEAM_RANGES.map((r) => (
-              <Link
-                key={r}
-                href={r === "season" ? base : `${base}?range=${r}`}
-                aria-current={r === range ? "true" : undefined}
-                className={buttonVariants({ variant: r === range ? "secondary" : "ghost", size: "xs" })}
-              >
-                {RANGE_LABELS[r]}
-              </Link>
-            ))}
-          </nav>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
+            <StatsSeasonNav base={base} seasons={seasonInfo.options} selected={seasonInfo.selected} defaultSeason={seasonInfo.default} />
+            {rangesOn && (
+              <nav className="flex flex-wrap gap-1" aria-label="Time range">
+                {TEAM_RANGES.map((r) => {
+                  const qs = new URLSearchParams();
+                  if (seasonParam && seasonInfo.selected !== seasonInfo.default) qs.set("season", String(seasonInfo.selected));
+                  if (r !== "season") qs.set("range", r);
+                  return (
+                    <Link
+                      key={r}
+                      href={qs.size ? `${base}?${qs}` : base}
+                      aria-current={r === range ? "true" : undefined}
+                      className={buttonVariants({ variant: r === range ? "secondary" : "ghost", size: "xs" })}
+                    >
+                      {RANGE_LABELS[r]}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
         </CardHeader>
         {roster.count > 0 && (
           <CardContent className="grid gap-5">
@@ -160,9 +174,8 @@ export default async function TeamPage({
                         <TableHead>Player</TableHead>
                         <TableHead className="hidden sm:table-cell">Pos</TableHead>
                         <TableHead className="hidden sm:table-cell">Today</TableHead>
-                        <TableHead className="hidden text-right sm:table-cell" title="Fantasy points per game last season (win bonus included)">Last FP/G</TableHead>
-                        <TableHead className="hidden text-right sm:table-cell" title="Total fantasy points last season (win bonus included)">Last FP</TableHead>
-                        <TableHead className="hidden text-right sm:table-cell">FP/G</TableHead>
+                        <TableHead className="hidden text-right sm:table-cell" title={`Fantasy points per game in ${seasonLabel(seasonInfo.selected)} (win bonus included)`}>FP/G</TableHead>
+                        <TableHead className="hidden text-right sm:table-cell" title={`Total fantasy points in ${seasonLabel(seasonInfo.selected)} (win bonus included)`}>Season FP</TableHead>
                         <TableHead className="hidden text-right sm:table-cell">L15</TableHead>
                         <TableHead className="hidden text-right sm:table-cell">Proj</TableHead>
                         <TableHead className="text-right">FP</TableHead>
@@ -189,9 +202,8 @@ export default async function TeamPage({
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">{p.positions.join("/") || "-"}</TableCell>
                           <TableCell className="hidden whitespace-nowrap sm:table-cell">{todayText(p.todayGame)}</TableCell>
-                          <TableCell className="hidden text-right tabular-nums sm:table-cell" data-testid="last-fpg">{fmtNum(p.lastAvg)}</TableCell>
-                          <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.lastFp, 0)}</TableCell>
-                          <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.seasonAvg)}</TableCell>
+                          <TableCell className="hidden text-right tabular-nums sm:table-cell" data-testid="season-fpg">{fmtNum(p.fpAvg)}</TableCell>
+                          <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.fpTotal, 0)}</TableCell>
                           <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.recentAvg)}</TableCell>
                           <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.projection)}</TableCell>
                           <TableCell className="text-right font-medium tabular-nums" title="Season fantasy points incl. win bonus">{fmtNum(p.totalFp, 0)}</TableCell>
@@ -215,7 +227,7 @@ export default async function TeamPage({
             ))}
             <p className="text-xs text-muted-foreground">
               FP and Bonus are what each player earned for this team in the selected range (totals above also include
-              players since dropped). FP/G and L15 are season and last-15-day averages including the win bonus.
+              players since dropped). FP/G and Season FP are for the selected stats season, L15 is the last-15-day average, all including the win bonus.
             </p>
           </CardContent>
         )}

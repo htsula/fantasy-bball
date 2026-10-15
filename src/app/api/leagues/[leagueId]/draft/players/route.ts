@@ -11,7 +11,7 @@ const PAGE_SIZE = 25;
 
 const query = z.object({
   q: z.string().trim().max(80).optional().catch(undefined),
-  pos: z.string().max(3).optional().catch(undefined),
+  season: z.coerce.number().int().min(2000).max(2100).optional().catch(undefined),
   team: z.coerce.number().int().positive().optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(100).catch(1),
   sort: z.enum(DRAFT_SORT_KEYS).catch(DEFAULT_DRAFT_SORT),
@@ -33,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ leagueId
   const p = query.parse(Object.fromEntries(url.searchParams));
   const result = await listDraftablePlayers(db, leagueId, {
     q: p.q,
-    pos: p.pos,
+    season: p.season,
     team: p.team,
     sort: p.sort,
     dir: p.dir,

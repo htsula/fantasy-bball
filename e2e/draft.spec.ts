@@ -128,10 +128,10 @@ test("4-team draft: queue, snake, simultaneous waves, commissioner pick, complet
   await queuer.goto(`/leagues/${leagueId}/draft`);
   await expect(queuer.getByText("Waiting for the commissioner to start the draft.")).toBeVisible();
   await expect(queuer.getByTestId("start-draft")).toHaveCount(0);
-  // Default sort: last season's total FP, descending (players without a last season are listed last).
+  // Default sort: total FP of the default stats season, descending (players without stats are listed last).
   await expect(queuer.getByTestId("player-row").first()).toBeVisible();
-  await expect(queuer.getByRole("columnheader", { name: /^Last FP( ▼)?$/ }).first()).toHaveAttribute("aria-sort", "descending");
-  const lastFps = (await queuer.locator('[data-testid="player-search"] [data-testid="last-fp"]').allTextContents())
+  await expect(queuer.getByRole("columnheader", { name: /^FP( ▼)?$/ }).first()).toHaveAttribute("aria-sort", "descending");
+  const lastFps = (await queuer.locator('[data-testid="player-search"] [data-testid="player-fp"]').allTextContents())
     .map((t) => Number(t))
     .filter((n) => !Number.isNaN(n));
   expect(lastFps.length).toBeGreaterThan(0);

@@ -5,6 +5,7 @@ import type { Db } from "@/db/types";
 import { MIN_RECENT_GAMES, RECENT_DAYS } from "./projection-math";
 import type { PointValues } from "./points";
 import { DEFAULT_TEAM_WIN_BONUS } from "./settings";
+import { defaultStatsSeason } from "./season-default";
 import { fantasyPointsSql } from "./sql";
 
 /**
@@ -52,22 +53,37 @@ export async function seasonsWithData(db: Db): Promise<number[]> {
 export type SeasonChoice = {
   current: number;
   previous: number;
-  /** Seasons that can be shown (have data), newest first: current, previous, else the latest one held. */
+  /** Seasons offered in the selector, newest first: always the current and the previous season. */
   options: number[];
-  /** The season shown when none is requested: current if it has a final game, else previous, else the latest. */
-  default: number | null;
+  /** Offered seasons that have at least one final regular-season game. */
+  withData: number[];
+  /** The season shown when none is requested (see defaultStatsSeason). */
+  default: number;
   /** The season to show for a requested value (falls back to the default when not offered). */
-  selected: number | null;
+  selected: number;
 };
 
-export async function resolveSeason(db: Db, now: Date = new Date(), requested?: number | null): Promise<SeasonChoice> {
-  const [current, have] = await Promise.all([currentSeason(db, now), seasonsWithData(db)]);
+/** Start of the earliest regular-season game of a season, or null when its schedule is unknown. */
+export async function openingNight(db: Db, season: number): Promise<Date | null> {
+  const [row] = await db
+    .select({ first: sql<Date | null>`min(${nbaGames.startTime})`.mapWith(nbaGames.startTime) })
+    .from(nbaGames)
+    .where(and(eq(nbaGames.seasonType, 2), eq(nbaGames.season, season)));
+  return row?.first ?? null;
+}
+
+/** Season choice for an explicit current season (a league's season, or the calendar's). */
+export async function seasonChoiceFor(db: Db, current: number, now: Date = new Date(), requested?: number | null): Promise<SeasonChoice> {
+  const [opening, have] = await Promise.all([openingNight(db, current), seasonsWithData(db)]);
   const previous = previousSeason(current);
-  const options = [current, previous].filter((s) => have.includes(s));
-  if (options.length === 0 && have.length > 0) options.push(have[0]); // stale data only: show the latest we have
-  const def = options[0] ?? null;
+  const options = [current, previous];
+  const def = defaultStatsSeason({ current, openingNight: opening, now });
   const selected = requested != null && options.includes(requested) ? requested : def;
-  return { current, previous, options, default: def, selected };
+  return { current, previous, options, withData: options.filter((s) => have.includes(s)), default: def, selected };
+}
+
+export async function resolveSeason(db: Db, now: Date = new Date(), requested?: number | null): Promise<SeasonChoice> {
+  return seasonChoiceFor(db, await currentSeason(db, now), now, requested);
 }
 
 export type AggregateOptions = {

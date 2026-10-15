@@ -83,21 +83,21 @@ export async function loadProjections(
 export type GamesRemaining = { week: number; season: number };
 
 /**
- * Per team: games not yet final this fantasy week (Mon-Sun ET, any game type) and for the rest
- * of the season (regular season + playoffs only). Teams with none are omitted.
+ * Per team: games not yet final this fantasy week (Mon-Sun ET) and for the rest of the
+ * season. Regular-season games only: preseason, play-in and playoff games never count. Teams with none are omitted.
  */
 export async function loadGamesRemaining(db: Db, now = new Date()): Promise<Map<number, GamesRemaining>> {
   const { end } = etWeekRange(now);
   const res = (await db.execute(sql`
     select team_id as "teamId",
            (count(*) filter (where start_time < ${end.toISOString()}::timestamptz))::int as week,
-           (count(*) filter (where season_type in (2, 3)))::int as season
+           count(*)::int as season
     from (
       select home_team_id as team_id, start_time, season_type from nba_games
-        where status in ('scheduled', 'in') and start_time >= ${new Date(now.getTime() - 4 * 3_600_000).toISOString()}::timestamptz
+        where season_type = 2 and status in ('scheduled', 'in') and start_time >= ${new Date(now.getTime() - 4 * 3_600_000).toISOString()}::timestamptz
       union all
       select away_team_id, start_time, season_type from nba_games
-        where status in ('scheduled', 'in') and start_time >= ${new Date(now.getTime() - 4 * 3_600_000).toISOString()}::timestamptz
+        where season_type = 2 and status in ('scheduled', 'in') and start_time >= ${new Date(now.getTime() - 4 * 3_600_000).toISOString()}::timestamptz
     ) g
     group by team_id
   `)) as unknown as { rows: { teamId: number; week: number; season: number }[] };

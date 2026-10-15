@@ -8,16 +8,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { BoardPlayer, DraftSortKey } from "@/lib/draft/board";
-import { fmtNum } from "@/lib/nba/format";
-import { FANTASY_POSITIONS } from "@/lib/nba/positions";
+import type { DraftListPlayer, DraftSortKey } from "@/lib/draft/board";
+import { fmtNum, seasonLabel } from "@/lib/nba/format";
 import { fetchJson } from "./shared";
 
-type PlayersResponse = { players: BoardPlayer[]; total: number; page: number; pageSize: number; pageCount: number };
+type PlayersResponse = {
+  players: DraftListPlayer[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  /** Stats season shown, the seasons offered and the default one. */
+  season: number;
+  seasons: number[];
+  defaultSeason: number;
+};
 
 export const playersKeyPrefix = (leagueId: string) => `/api/leagues/${leagueId}/draft/players`;
 
-/** Searchable, filterable list of draftable players; default order is last season's total FP, descending. */
+/**
+ * Searchable list of draftable players. The Stats toggle picks the season behind the FP columns
+ * (default: the previous season until the league season is a week old); default order is that
+ * season's total FP, descending.
+ */
 export function PlayerSearch({
   leagueId,
   nbaTeams,
@@ -29,7 +42,7 @@ export function PlayerSearch({
 }: {
   leagueId: string;
   nbaTeams: { id: number; abbrev: string }[];
-  actions: (player: BoardPlayer) => ReactNode;
+  actions: (player: DraftListPlayer) => ReactNode;
   pageSize?: number;
   refreshMs?: number;
   compact?: boolean;
@@ -38,10 +51,10 @@ export function PlayerSearch({
 }) {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [pos, setPos] = useState("");
   const [team, setTeam] = useState("");
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<DraftSortKey>("lastfp");
+  const [season, setSeason] = useState<number | null>(null); // null = the server's default
+  const [sort, setSort] = useState<DraftSortKey>("fp");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
@@ -51,7 +64,7 @@ export function PlayerSearch({
 
   const params = new URLSearchParams({ page: String(page), size: String(pageSize) });
   if (debounced) params.set("q", debounced);
-  if (pos) params.set("pos", pos);
+  if (season !== null) params.set("season", String(season));
   if (team) params.set("team", team);
   params.set("sort", sort);
   params.set("dir", dir);
@@ -77,6 +90,7 @@ export function PlayerSearch({
       </button>
     </TableHead>
   );
+  const seasonText = data ? seasonLabel(data.season) : "the selected season";
   const offset = ((data?.page ?? page) - 1) * pageSize;
 
   return (
@@ -93,17 +107,19 @@ export function PlayerSearch({
           className="sm:col-span-2"
         />
         <NativeSelect
-          value={pos}
+          value={season ?? data?.season ?? ""}
           onChange={(e) => {
-            setPos(e.target.value);
+            setSeason(Number(e.target.value));
             reset();
           }}
-          aria-label="Position"
+          disabled={!data}
+          aria-label="Stats season"
+          data-testid="stats-season"
         >
-          <option value="">All positions</option>
-          {FANTASY_POSITIONS.map((p) => (
-            <option key={p} value={p}>
-              {p}
+          {!data && <option value="">Stats</option>}
+          {(data?.seasons ?? []).map((sn) => (
+            <option key={sn} value={sn}>
+              Stats: {seasonLabel(sn)}
             </option>
           ))}
         </NativeSelect>
@@ -134,9 +150,8 @@ export function PlayerSearch({
           reset();
         }}
       >
-        <option value="lastfp">Sort: Last season FP</option>
-        <option value="lastavg">Sort: Last season FP/G</option>
-        <option value="curavg">Sort: This season FP/G</option>
+        <option value="fp">Sort: FP</option>
+        <option value="fpavg">Sort: FP/G</option>
         <option value="proj">Sort: Projection</option>
         <option value="name">Sort: Name</option>
       </NativeSelect>
@@ -150,9 +165,8 @@ export function PlayerSearch({
               <TableHead className="hidden w-8 sm:table-cell">#</TableHead>
               {sortHead("name", "Player", "Sort by name", false)}
               {!compact && <TableHead className="hidden sm:table-cell">Team</TableHead>}
-              {sortHead("lastfp", "Last FP", "Total fantasy points last season (league scoring, win bonus included). Default sort.")}
-              {sortHead("lastavg", "Last FP/G", "Fantasy points per game last season (win bonus included)", true, "hidden sm:table-cell")}
-              {sortHead("curavg", "FP/G", "Fantasy points per game this season (win bonus included)", true, "hidden sm:table-cell")}
+              {sortHead("fp", "FP", `Total fantasy points in ${seasonText} (league scoring, win bonus included). Default sort.`)}
+              {sortHead("fpavg", "FP/G", `Fantasy points per game in ${seasonText} (win bonus included)`, true, "hidden sm:table-cell")}
               {sortHead("proj", "Proj", "Projected fantasy points per game", true, "hidden sm:table-cell")}
               <TableHead className="text-right">
                 <span className="sr-only">Actions</span>
@@ -174,9 +188,8 @@ export function PlayerSearch({
                   </div>
                 </TableCell>
                 {!compact && <TableCell className="hidden sm:table-cell">{p.nbaTeam ?? "-"}</TableCell>}
-                <TableCell className="text-right tabular-nums" data-testid="last-fp">{fmtNum(p.lastFp, 0)}</TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.lastAvg)}</TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.curAvg)}</TableCell>
+                <TableCell className="text-right tabular-nums" data-testid="player-fp">{fmtNum(p.fp, 0)}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.fpAvg)}</TableCell>
                 <TableCell className="hidden text-right tabular-nums sm:table-cell">{fmtNum(p.proj)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">{actions(p)}</div>
@@ -185,14 +198,14 @@ export function PlayerSearch({
             ))}
             {data && data.players.every((p) => takenIds?.has(p.id)) && (
               <TableRow>
-                <TableCell colSpan={compact ? 7 : 8} className="py-6 text-center text-muted-foreground">
+                <TableCell colSpan={compact ? 6 : 7} className="py-6 text-center text-muted-foreground">
                   No players match.
                 </TableCell>
               </TableRow>
             )}
             {!data && isLoading && (
               <TableRow>
-                <TableCell colSpan={compact ? 7 : 8} className="py-6 text-center text-muted-foreground">
+                <TableCell colSpan={compact ? 6 : 7} className="py-6 text-center text-muted-foreground">
                   Loading players...
                 </TableCell>
               </TableRow>
