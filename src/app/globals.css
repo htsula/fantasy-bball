@@ -279,10 +279,14 @@ body {
 }
 
 /* Sticky first column for wide tables that scroll sideways (opt in with data-sticky-first on the <table>). */
+/* The sticky cell needs an opaque background matching what the table sits on: the page, or a card. */
 table[data-sticky-first] :is(th, td):first-child {
   position: sticky;
   left: 0;
   z-index: 1;
+  background-color: var(--background);
+}
+[data-slot="card"] table[data-sticky-first] :is(th, td):first-child {
   background-color: var(--card);
 }
 table[data-sticky-first] thead :is(th, td):first-child {

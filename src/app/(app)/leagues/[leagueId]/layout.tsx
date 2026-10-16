@@ -70,24 +70,33 @@ export default async function LeagueLayout({
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        {/* One row on every width: the name truncates before the bell and theme button wrap. On phones the status
+            badge moves down to the season line to make room. */}
+        <div className="flex items-center gap-2">
           <Link
             href="/leagues"
             aria-label="Back to leagues"
-            className={buttonVariants({ variant: "ghost", size: "icon" }) + " -ml-2"}
+            className={buttonVariants({ variant: "ghost", size: "icon" }) + " -ml-2 shrink-0"}
           >
             <ArrowLeft />
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">{league.name}</h1>
-          <Badge variant="secondary">{LEAGUE_STATUS_LABEL[league.status]}</Badge>
-          <div className="ml-auto flex items-center gap-1">
+          <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">{league.name}</h1>
+          <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
+            {LEAGUE_STATUS_LABEL[league.status]}
+          </Badge>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             <NotificationBell initialCount={unread} />
             <ThemePicker />
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {seasonLabel(league.season)} season &middot; Commissioner: {view.commissionerUsername}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="sm:hidden">
+            {LEAGUE_STATUS_LABEL[league.status]}
+          </Badge>
+          <p className="text-sm text-muted-foreground">
+            {seasonLabel(league.season)} season &middot; Commissioner: {view.commissionerUsername}
+          </p>
+        </div>
         <ScrollNav label="League" items={items} />
       </div>
       {children}

@@ -15,7 +15,8 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByRole("heading", { name: `Welcome, ${username}` })).toBeVisible();
 }
 
-const leagueNav = (page: Page, name: string) => page.getByRole("navigation", { name: "League" }).getByRole("link", { name });
+// exact: "Scoreboard" would otherwise also match the "NBA Scoreboard" tab.
+const leagueNav = (page: Page, name: string) => page.getByRole("navigation", { name: "League" }).getByRole("link", { name, exact: true });
 
 test("matchup box score, scoreboard, finalization via cron, standings and result notifications", async ({ page, browser, request }) => {
   test.setTimeout(300_000);

@@ -78,7 +78,8 @@ test("main pages have no horizontal page overflow at 390px and the header is tap
   await page.goto(`${base}/matchup`);
   await expect(page.getByTestId("box-score")).toBeVisible({ timeout: 60_000 });
   const boxTable = page.locator('[data-testid^="box-"] table:visible').first();
-  await inView(boxTable.getByRole("columnheader", { name: "FP", exact: true }), "box score FP header");
+  // On phones the FP column header shows the team's matchup score instead of "FP".
+  await inView(boxTable.getByTestId(/^table-score-/), "box score score header");
   await inView(boxTable.getByTestId("fp-cell").first(), "box score FP cell");
   await inView(boxTable.getByTestId("view-total-home").or(boxTable.getByTestId("view-total-away")).first(), "box score total");
 
