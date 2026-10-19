@@ -85,6 +85,9 @@ $env:DATABASE_URL='...'; npm run create-admin -- --username yourname --reset
 | `npm run db:seed-nba` | Just the NBA fixtures part of the seed |
 | `npm run sync:daily [-- --season 2026] [--budget-seconds 300]` | Run the daily NBA sync against the **live ESPN API** into whatever `DATABASE_URL` points at (see below) |
 | `npm run create-admin -- --username X` | Create a site admin (`--reset` resets an existing user's password) |
+| `npm run sim` | The full-league simulation as a test (`tests/sim`, its own Vitest config, **not** part of `npm test`): 16 teams, draft, a whole 2026-27 season, playoffs, next season. About 2-3 minutes in memory. `SIM_SEED=7 npm run sim` plays another league. See **League simulation** |
+| `npm run db:simulate -- --db .pglite-sim [--seed 7] [--until playoffs] [--no-smoke] [--force]` | Plays the same simulation into a PGlite directory (or `DATABASE_URL=pglite:<dir>`), prints standings, bracket, counts and timings, and leaves the database there to browse with `npm run dev`. Refuses real Postgres and the default `./.pglite` |
+| `npm run e2e:sim [-- --only regular-season,playoffs] [--no-build] [--regen]` | Browser pass over the simulated league: every page and the key UI flows at each of the nine checkpoints, on a production build with the clock set to the checkpoint. About 30 minutes for all nine. See **League simulation** |
 | `npm run vapid:generate` | Print a new Web Push VAPID key pair to the console (never written to a file) |
 
 ## Environment variables
@@ -488,6 +491,47 @@ Cron endpoints return the same summary as JSON, so a failing GitHub Action run s
 - **`db:seed` / `create-admin` hang or fail locally**: PGlite allows one process; stop `npm run dev` first.
 - **`npm run e2e` fails immediately**: stop any server on :3100, and a running `next dev` (it shares `.next`).
 
+## League simulation
+
+`src/lib/sim/` plays a complete 16-team league through the real service functions (only NBA source data is
+inserted directly, because production gets it from ESPN): site invite, league invite links (revoked, reused,
+an unwanted 17th joiner removed), password reset, schedule, a restarted async snake + wave draft with queues,
+stalled teams, undo and every draft error, then every day of the 2026-27 calendar (real dates, 1,230 games,
+Thanksgiving/Christmas Eve/All-Star gaps, tip-off snapshots, live box scores, injuries, a postponement), free
+agency, NBA trades/waivers/signings, every trade path (review, veto, vote, counter, expiry, invalidation,
+deadline, reversal, roster limit), chat, stat corrections, commissioner adjustments, exact ties, missed cron
+nights, 8-team playoffs, history, next season with keepers and its draft.
+
+Every finalized matchup, the standings (with tiebreaks) and the bracket are recomputed by an independent oracle
+(`oracle.ts`, shares no code with the app) and compared with what the app stored, and `page-smoke.ts` calls the
+loader behind every page and API route as the commissioner, a member and a non-member at nine checkpoints
+(`setup`, `draft-snake`, `draft-waves`, `preseason`, `regular-season`, `playoffs`, `complete`, `next-season`,
+`next-season-draft`). `runLeagueSimulation(db, { seed, until, onCheckpoint })` is the entry point; the hook is
+awaited with nothing in flight, so it can dump the database or crawl pages. A freshly generated database has no planner statistics
+(production Postgres gets them from autovacuum), so the simulation runs `ANALYZE` at each checkpoint.
+
+`npm run e2e:sim` is the browser half. It plays the simulation once and saves a PGlite snapshot at each checkpoint
+(`.pglite-sim/_snapshots`, reused until `--regen`). Then for each checkpoint it restores the snapshot, starts
+`next start` on it with the server clock set to the checkpoint and runs `playwright.sim.config.ts`. The clock comes from
+`scripts/sim/clock-shim.mjs`: only this runner preloads it, it refuses to run without a `pglite:` database, and it
+blocks ESPN.
+
+- `e2e-sim/crawl.spec.ts` visits every page and JSON API route at phone size, four times: signed out, as a non-member,
+  as a member and as the commissioner. That is about 230-390 visits per checkpoint. A visit fails on an unexpected
+  status code or redirect, an error view, a page or console error, missing key text, or sideways overflow.
+  Screenshots go to `screenshots/sim/<checkpoint>/` and per-visit results to `.pglite-sim/_results/<checkpoint>.jsonl`.
+- `e2e-sim/flows.spec.ts` drives the main flows through the UI on that checkpoint's copy:
+  - joining by invite link; settings, schedule and invite links;
+  - snake and wave picks, including a commissioner pick;
+  - free agency up to the daily limit;
+  - a trade from proposal to commissioner approval, and the trade block;
+  - chat mentions and notifications; box-score days; score adjustments;
+  - the bracket, history and starting the next season;
+  - keepers (the owner is locked out after the deadline, the commissioner saves within the limit) and the next draft
+    with keepers.
+
+Stop `npm run dev` first, because both use `.next`. `SIM_BLOCK_SW=1` runs the browser without the service worker.
+
 ## Project layout
 
 ```
@@ -511,7 +555,9 @@ src/lib/log.ts, src/instrumentation.ts                 structured logging, onReq
 src/components/{nav,ui/skeleton,error-view}            scrollable nav, loading skeletons, error / not-found views
 src/db/{schema,index,migrate,seed}.ts   drizzle/       schema, client (PGlite or Neon), migrations
 src/middleware.ts                                      redirects cookie-less visitors to /login
-tests/  e2e/  e2e-mobile/                              Vitest, Playwright (production build), mobile screenshot pass
+src/lib/sim/                                           league simulation (NBA world, oracle, phases, page loaders smoke)
+tests/  tests/sim/  e2e/  e2e-mobile/                  Vitest, the slow league simulation, Playwright (production build), mobile screenshot pass
+e2e-sim/  scripts/sim/                                 browser pass over the simulated league (crawl + flows, checkpoint snapshots, clock shim)
 ```
 
 ## Security notes

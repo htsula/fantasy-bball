@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "sim": "vitest run -c vitest.sim.config.mts",
     "e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
@@ -21,10 +22,12 @@
     "db:seed-e2e-trades": "tsx scripts/seed-e2e-trades.ts",
     "db:seed-e2e-playoffs": "tsx scripts/seed-e2e-playoffs.ts",
     "db:seed-e2e-social": "tsx scripts/seed-e2e-social.ts",
+    "db:simulate": "tsx scripts/simulate-league.ts",
     "sync:daily": "tsx scripts/sync-daily.ts",
     "create-admin": "tsx scripts/create-admin.ts",
     "vapid:generate": "node scripts/generate-vapid.mjs",
-    "e2e:mobile": "playwright test -c playwright.mobile.config.ts"
+    "e2e:mobile": "playwright test -c playwright.mobile.config.ts",
+    "e2e:sim": "tsx scripts/sim/e2e-sim.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
